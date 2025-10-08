@@ -1,0 +1,21 @@
+## Instal·lació de paquets necessaris
+
+```{r}
+install.packages("SmartEDA")
+library(SmartEDA)
+```
+
+## Carregar dades
+```{r}
+data("raw-data.csv")
+df <- read.csv("raw-data.csv")
+```
+
+## Exploració de dades amb SmartEDA
+```{r}
+install.packages("DataExplorer")
+library(DataExplorer)
+
+create_report(df, output_file = "informe_df.html", output_dir = getwd())
+```
+
