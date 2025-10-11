@@ -1,5 +1,4 @@
-df <- read.csv(
-  "C:/Users/User/Documents/universitat/2n1q/me/projecte/practicaME/raw-data.csv",
+df <- read.csv("raw-data.csv",
   sep = ";", stringsAsFactors = FALSE, check.names = FALSE
 )
 
