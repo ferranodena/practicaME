@@ -1,0 +1,199 @@
+---
+title: "preprocessing"
+output: html_document
+date: "2025-10-12"
+---
+
+## 0. Carreguem les dades
+```{r}
+df <- read.csv("./raw-data.csv",
+  sep = ";", stringsAsFactors = FALSE, check.names = FALSE
+)
+```
+## 1. Netegem els noms i convertim a variables numèriques i factors
+```{r}
+# variables que no siguin numèriques que calen convertir
+cat_vars <- c(
+  "Marital_status",
+  "Application_mode",
+  "Course",
+  "Daytime_evening_attendance",
+  "Previous_qualification",
+  "Previous_qualification_grade",
+  "Nacionality",
+  "Mother_s_occupation",
+  "Father_s_occupation",
+  "Displaced",
+  "Educational_special_needs",
+  "Debtor",
+  "Tuition_fees_up_to_date",
+  "Gender",
+  "Scholarship_holder",
+  "International",
+  "Target"
+)
+
+# les convertim en factors
+for (v in cat_vars) {
+  df[[v]] <- factor(df[[v]], ordered = FALSE)
+}
+
+# comprovar que  són factors
+sapply(df[cat_vars], class)
+
+# comprovar que la resta són enters (integer) o numèriques contínues (numeric)
+num_vars <- setdiff(names(df), cat_vars)
+sapply(df[num_vars], class)
+```
+
+Comprovem si hi ha valors buits
+
+```{r}
+# comprovar si hi ha files amb valors buits (no n'hi ha)
+n_total <- nrow(df)
+cat("Files totals:", n_total, "\n")
+na_per_row <- rowSums(is.na(df))
+n_with_na <- sum(na_per_row > 0)
+cat("Files amb almenys un NA:", n_with_na, "\n")
+```
+## 2. Eliminem duplicats
+```{r}
+##Duplicats (files 100% iguals)
+dup_flag <- duplicated(df) | duplicated(df, fromLast = TRUE)
+cat("Files duplicades:", sum(dup_flag), "\n")
+```
+
+## 3. Apliquem normes de coherència i eliminem outliers
+
+Definim les normes de coherència:
+```{r}
+n <- nrow(df)
+viol_Age_out_of_range <- rep(FALSE, n)
+viol_Binary_not_0_1   <- rep(FALSE, n)
+viol_Admission_grade  <- rep(FALSE, n)
+viol_Prevqual_grade   <- rep(FALSE, n)
+viol_S1_nonneg        <- rep(FALSE, n)
+viol_S1_order         <- rep(FALSE, n)
+viol_S1_balance       <- rep(FALSE, n)
+viol_S1_grade         <- rep(FALSE, n)
+viol_S2_nonneg        <- rep(FALSE, n)
+viol_S2_order         <- rep(FALSE, n)
+viol_S2_balance       <- rep(FALSE, n)
+viol_S2_grade         <- rep(FALSE, n)
+viol_Target_domain    <- rep(FALSE, n)
+viol_Macro_range      <- rep(FALSE, n)
+
+# Edat plausible
+if ("Age_at_enrollment" %in% names(df)) {
+  x <- df$Age_at_enrollment
+  viol_Age_out_of_range <- !is.na(x) & (x < 15 | x > 80)
+}
+
+# Columnes binàries 0/1
+bin_cols <- c("Displaced","Educational_special_needs","Debtor",
+              "Tuition_fees_up_to_date","Gender","Scholarship_holder","International")
+for (nm in intersect(bin_cols, names(df))) {
+  x <- df[[nm]]
+  viol_Binary_not_0_1 <- viol_Binary_not_0_1 | (!is.na(x) & !(x %in% c(0, 1)))
+}
+
+# Notes/grades d’admissió i prèvies 
+if ("Admission_grade" %in% names(df)) {
+  x <- df$Admission_grade
+  viol_Admission_grade <- !is.na(x) & (x < 0 | x > 200)
+}
+if ("Previous_qualification_grade" %in% names(df)) {
+  x <- df$Previous_qualification_grade
+  viol_Prevqual_grade <- !is.na(x) & (x < 0 | x > 200)
+}
+
+#1r semestre: coherències de comptatges i nota
+cols_s1 <- c("Curricular_units_1st_sem_enrolled",
+             "Curricular_units_1st_sem_evaluations",
+             "Curricular_units_1st_sem_approved",
+             "Curricular_units_1st_sem_without_evaluations",
+             "Curricular_units_1st_sem_grade")
+if (all(cols_s1 %in% names(df))) {
+  enr1 <- df$Curricular_units_1st_sem_enrolled
+  eva1 <- df$Curricular_units_1st_sem_evaluations
+  app1 <- df$Curricular_units_1st_sem_approved
+  we1  <- df$Curricular_units_1st_sem_without_evaluations
+  gr1  <- df$Curricular_units_1st_sem_grade
+  
+  viol_S1_nonneg  <- (!is.na(enr1) & enr1 < 0) | (!is.na(eva1) & eva1 < 0) | (!is.na(app1) & app1 < 0)
+  viol_S1_order   <- !(is.na(app1) | is.na(enr1) | is.na(eva1) | (app1 <= enr1 & app1 <= eva1))
+  viol_S1_balance <- !(is.na(app1) | is.na(we1) | is.na(enr1) | ((app1 + we1) <= enr1))
+  viol_S1_grade   <- !is.na(gr1) & (gr1 < 0 | gr1 > 20)
+}
+
+# 2n semestre: coherències de comptatges i nota
+cols_s2 <- c("Curricular_units_2nd_sem_enrolled",
+             "Curricular_units_2nd_sem_evaluations",
+             "Curricular_units_2nd_sem_approved",
+             "Curricular_units_2nd_sem_without_evaluations",
+             "Curricular_units_2nd_sem_grade")
+if (all(cols_s2 %in% names(df))) {
+  enr2 <- df$Curricular_units_2nd_sem_enrolled
+  eva2 <- df$Curricular_units_2nd_sem_evaluations
+  app2 <- df$Curricular_units_2nd_sem_approved
+  we2  <- df$Curricular_units_2nd_sem_without_evaluations
+  gr2  <- df$Curricular_units_2nd_sem_grade
+  
+  viol_S2_nonneg  <- (!is.na(enr2) & enr2 < 0) | (!is.na(eva2) & eva2 < 0) | (!is.na(app2) & app2 < 0)
+  viol_S2_order   <- !(is.na(app2) | is.na(enr2) | is.na(eva2) | (app2 <= enr2 & app2 <= eva2))
+  viol_S2_balance <- !(is.na(app2) | is.na(we2) | is.na(enr2) | ((app2 + we2) <= enr2))
+  viol_S2_grade   <- !is.na(gr2) & (gr2 < 0 | gr2 > 20)
+}
+
+# Target dins del domini conegut
+if ("Target" %in% names(df)) {
+  viol_Target_domain <- is.na(df$Target) | !(df$Target %in% c("Dropout","Graduate","Enrolled"))
+}
+
+# Variables macro (rangs molt amplis per només capturar absurds)
+if ("Unemployment_rate" %in% names(df)) {
+  x <- df$Unemployment_rate
+  viol_Macro_range <- viol_Macro_range | (!is.na(x) & (x < -100 | x > 100))
+}
+if ("Inflation_rate" %in% names(df)) {
+  x <- df$Inflation_rate
+  viol_Macro_range <- viol_Macro_range | (!is.na(x) & (x < -100 | x > 100))
+}
+if ("GDP" %in% names(df)) {
+  x <- df$GDP
+  viol_Macro_range <- viol_Macro_range | (!is.na(x) & (x < -100 | x > 100))
+}
+
+# Resum d’infraccions
+viol_mat <- cbind(
+  Age_out_of_range = viol_Age_out_of_range,
+  Binary_not_0_1   = viol_Binary_not_0_1,
+  Admission_out    = viol_Admission_grade,
+  Prevqual_out     = viol_Prevqual_grade,
+  S1_nonneg        = viol_S1_nonneg,
+  S1_order         = viol_S1_order,
+  S1_balance       = viol_S1_balance,
+  S1_grade_out     = viol_S1_grade,
+  S2_nonneg        = viol_S2_nonneg,
+  S2_order         = viol_S2_order,
+  S2_balance       = viol_S2_balance,
+  S2_grade_out     = viol_S2_grade,
+  Target_out       = viol_Target_domain,
+  Macro_out        = viol_Macro_range
+)
+```
+
+les fem aplicar i en visualitzem els resultats:
+```{r}
+viol_any <- apply(viol_mat, 1L, function(z) any(z, na.rm = TRUE))
+cat("Files amb almenys una violació de regles:", sum(viol_any), "\n")
+
+viol_counts <- colSums(viol_mat, na.rm = TRUE)
+viol_summary <- data.frame(rule = names(viol_counts), n = as.integer(viol_counts), row.names = NULL)
+viol_summary <- viol_summary[order(-viol_summary$n), ]
+print(viol_summary)
+```
+## 4. Desem el dataset preprocessat
+```{r}
+write.csv(df_clean, "clean-data.csv", row.names = FALSE)
+```
