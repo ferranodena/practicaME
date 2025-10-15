@@ -1,0 +1,47 @@
+---
+title: "Numerical Response"
+output: "html_document"
+date: "15/10/2025"
+---
+
+
+# Model fit
+```{r}
+# Carreguem les dades
+library(readr)
+data <- read_csv("preprocessing/clean-data.csv")
+```
+
+```{r}
+# Descriptiva previa de la variable a estudiar (Admission_grade)
+summary(data$Admission_grade)
+hist(data$Admission_grade)
+```
+
+```{r}
+# Construim un mlgz sobre la variable a estudiar
+model <- glm(Admission_grade ~ . - Target, data = data, family = gaussian())
+summary(model)
+```
+
+```{r}
+# Construim un model reduit, eliminant les variables poc significatives
+model_reduit <- step(model, direction = "both", trace = TRUE)
+summary(model_reduit)
+```
+
+```{r}
+# Comparem el model complet amb el reduit, per veure si hi ha diferència significativa
+anova(model_reduit, model, test = "Chisq")
+```
+
+
+# Model validation
+```{r}
+# Visualitzem els residus del model reduit
+par(mfrow=c(2,2))
+plot(model_reduit)
+```
+
+
+
