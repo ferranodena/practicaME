@@ -6,44 +6,236 @@ date: "2025-10-12"
 
 ## 0. Carreguem les dades
 ```{r}
-df <- read.csv("./raw-data.csv",
+df <- read.csv("C:/Users/User/Documents/universitat/2n1q/me/projecte/practicaME/raw-data.csv",
   sep = ";", stringsAsFactors = FALSE, check.names = FALSE
 )
 ```
-## 1. Netegem els noms i convertim a variables numèriques i factors
-```{r}
-# variables que no siguin numèriques que calen convertir
-cat_vars <- c(
-  "Marital_status",
-  "Application_mode",
-  "Course",
-  "Daytime_evening_attendance",
-  "Previous_qualification",
-  "Previous_qualification_grade",
-  "Nacionality",
-  "Mother_s_occupation",
-  "Father_s_occupation",
-  "Displaced",
-  "Educational_special_needs",
-  "Debtor",
-  "Tuition_fees_up_to_date",
-  "Gender",
-  "Scholarship_holder",
-  "International",
-  "Target"
-)
 
-# les convertim en factors
-for (v in cat_vars) {
-  df[[v]] <- factor(df[[v]], ordered = FALSE)
+## 1.Convertim a variables numèriques i factors
+```{r}
+# Normalitza noms amb espais -> subratllats (opcional però recomanat)
+names(df) <- gsub("[^A-Za-z0-9_]+", "_", names(df))
+names(df) <- gsub("_+", "_", names(df))
+names(df) <- sub("^_|_$", "", names(df))
+
+to_numeric_safely <- function(x) {
+  # Converteix factors/characters numèrics a numeric gestionant espais/buits
+  if (is.factor(x)) x <- as.character(x)
+  if (is.character(x)) {
+    x <- trimws(x)
+    x[x == ""] <- NA
+    x <- suppressWarnings(as.numeric(x))
+  }
+  return(x)
 }
 
-# comprovar que  són factors
-sapply(df[cat_vars], class)
+# 1) Marital_status (1..6)
+if ("Marital_status" %in% names(df)) {
+  x <- to_numeric_safely(df$Marital_status)
+  df$Marital_status <- factor(
+    x, levels = 1:6,
+    labels = c("Single","Married","Widower","Divorced","De facto union","Legally separated"),
+    ordered = FALSE
+  )
+}
 
-# comprovar que la resta són enters (integer) o numèriques contínues (numeric)
-num_vars <- setdiff(names(df), cat_vars)
-sapply(df[num_vars], class)
+# 2) Application_mode (codis específics)
+if ("Application_mode" %in% names(df)) {
+  x <- to_numeric_safely(df$Application_mode)
+  app_levels <- c(1,2,5,7,10,15,16,17,18,26,27,39,42,43,44,51,53,57)
+  app_labels <- c(
+    "1st phase - general contingent",
+    "Ordinance No. 612/93",
+    "1st phase - special contingent (Azores Island)",
+    "Holders of other higher courses",
+    "Ordinance No. 854-B/99",
+    "International student (bachelor)",
+    "1st phase - special contingent (Madeira Island)",
+    "2nd phase - general contingent",
+    "3rd phase - general contingent",
+    "Ordinance No. 533-A/99, item b2) (Different Plan)",
+    "Ordinance No. 533-A/99, item b3 (Other Institution)",
+    "Over 23 years old",
+    "Transfer",
+    "Change of course",
+    "Technological specialization diploma holders",
+    "Change of institution/course",
+    "Short cycle diploma holders",
+    "Change of institution/course (International)"
+  )
+  df$Application_mode <- factor(x, levels = app_levels, labels = app_labels, ordered = FALSE)
+}
+
+# 3) Course
+if ("Course" %in% names(df)) {
+  x <- to_numeric_safely(df$Course)
+  df$Course <- factor(
+    x,
+    levels = c(33,171,8014,9003,9070,9085,9119,9130,9147,9238,9254,9500,9556,9670,9773,9853,9991),
+    labels = c(
+      "Biofuel Production Technologies","Animation and Multimedia Design",
+      "Social Service (evening attendance)","Agronomy","Communication Design",
+      "Veterinary Nursing","Informatics Engineering","Equinculture","Management",
+      "Social Service","Tourism","Nursing","Oral Hygiene",
+      "Advertising and Marketing Management","Journalism and Communication",
+      "Basic Education","Management (evening attendance)"
+    ),
+    ordered = FALSE
+  )
+}
+
+# 4) Daytime_evening_attendance (conversió directa a factor sense bloc “binàries”)
+if ("Daytime_evening_attendance" %in% names(df)) {
+  x <- to_numeric_safely(df$Daytime_evening_attendance)
+  df$Daytime_evening_attendance <- factor(x, levels = c(0,1), labels = c("evening","daytime"), ordered = FALSE)
+}
+
+# 5) Previous_qualification
+if ("Previous_qualification" %in% names(df)) {
+  x <- to_numeric_safely(df$Previous_qualification)
+  df$Previous_qualification <- factor(
+    x,
+    levels = c(1,2,3,4,5,6,9,10,12,14,15,19,38,39,40,42,43),
+    labels = c(
+      "Secondary education","Higher education - bachelor's degree","Higher education - degree",
+      "Higher education - master's","Higher education - doctorate","Frequency of higher education",
+      "12th year of schooling - not completed","11th year of schooling - not completed",
+      "Other - 11th year of schooling","10th year of schooling",
+      "10th year of schooling - not completed",
+      "Basic education 3rd cycle (9th/10th/11th year) or equiv.",
+      "Basic education 2nd cycle (6th/7th/8th year) or equiv.",
+      "Technological specialization course","Higher education - degree (1st cycle)",
+      "Professional higher technical course","Higher education - master (2nd cycle)"
+    ),
+    ordered = FALSE
+  )
+}
+
+# 6) Nacionality
+if ("Nacionality" %in% names(df)) {
+  x <- to_numeric_safely(df$Nacionality)
+  df$Nacionality <- factor(
+    x,
+    levels = c(1,2,6,11,13,14,17,21,22,24,25,26,32,41,62,100,101,103,105,108,109),
+    labels = c(
+      "Portuguese","German","Spanish","Italian","Dutch","English","Lithuanian",
+      "Angolan","Cape Verdean","Guinean","Mozambican","Santomean","Turkish",
+      "Brazilian","Romanian","Moldova (Republic of)","Mexican","Ukrainian",
+      "Russian","Cuban","Colombian"
+    ),
+    ordered = FALSE
+  )
+}
+
+# 7) Mother_s_occupation
+if ("Mother_s_occupation" %in% names(df)) {
+  x <- to_numeric_safely(df$Mother_s_occupation)
+  mother_levels <- c(
+    0,1,2,3,4,5,6,7,8,9,10,90,99,122,123,125,131,132,134,141,143,144,151,152,153,171,173,175,191,192,193,194
+  )
+  mother_labels <- c(
+    "Student",
+    "Representatives of the Legislative Power and Executive Bodies, Directors, Directors and Executive Managers",
+    "Specialists in Intellectual and Scientific Activities",
+    "Intermediate Level Technicians and Professions",
+    "Administrative staff",
+    "Personal Services, Security and Safety Workers and Sellers",
+    "Farmers and Skilled Workers in Agriculture, Fisheries and Forestry",
+    "Skilled Workers in Industry, Construction and Craftsmen",
+    "Installation and Machine Operators and Assembly Workers",
+    "Unskilled Workers",
+    "Armed Forces Professions",
+    "Other Situation",
+    "(blank)",
+    "Health professionals",
+    "Teachers",
+    "Specialists in information and communication technologies (ICT)",
+    "Intermediate level science and engineering technicians and professions",
+    "Technicians and professionals, intermediate level of health",
+    "Intermediate level technicians from legal, social, sports, cultural and similar services",
+    "Office workers, secretaries in general and data processing operators",
+    "Data, accounting, statistical, financial services and registry-related operators",
+    "Other administrative support staff",
+    "Personal service workers",
+    "Sellers",
+    "Personal care workers and the like",
+    "Skilled construction workers and the like, except electricians",
+    "Skilled workers in printing, precision instrument manufacturing, jewelers, artisans and the like",
+    "Workers in food processing, woodworking, clothing and other industries and crafts",
+    "Cleaning workers",
+    "Unskilled workers in agriculture, animal production, fisheries and forestry",
+    "Unskilled workers in extractive industry, construction, manufacturing and transport",
+    "Meal preparation assistants"
+  )
+  df$Mother_s_occupation <- factor(x, levels = mother_levels, labels = mother_labels, ordered = FALSE)
+}
+
+# 8) Father_s_occupation
+if ("Father_s_occupation" %in% names(df)) {
+  x <- to_numeric_safely(df$Father_s_occupation)
+  father_levels <- c(
+    0,1,2,3,4,5,6,7,8,9,10,90,99,101,102,103,112,114,121,122,123,124,
+    131,132,134,135,141,143,144,151,152,153,154,161,163,171,172,174,175,181,182,183,192,193,194,195
+  )
+  father_labels <- c(
+    "Student",
+    "Representatives of the Legislative Power and Executive Bodies, Directors, Directors and Executive Managers",
+    "Specialists in Intellectual and Scientific Activities",
+    "Intermediate Level Technicians and Professions",
+    "Administrative staff",
+    "Personal Services, Security and Safety Workers and Sellers",
+    "Farmers and Skilled Workers in Agriculture, Fisheries and Forestry",
+    "Skilled Workers in Industry, Construction and Craftsmen",
+    "Installation and Machine Operators and Assembly Workers",
+    "Unskilled Workers",
+    "Armed Forces Professions",
+    "Other Situation",
+    "(blank)",
+    "Armed Forces Officers",
+    "Armed Forces Sergeants",
+    "Other Armed Forces personnel",
+    "Directors of administrative and commercial services",
+    "Hotel, catering, trade and other services directors",
+    "Specialists in the physical sciences, mathematics, engineering and related techniques",
+    "Health professionals",
+    "Teachers",
+    "Specialists in finance, accounting, administrative organization, public and commercial relations",
+    "Intermediate level science and engineering technicians and professions",
+    "Technicians and professionals, intermediate level of health",
+    "Intermediate level technicians from legal, social, sports, cultural and similar services",
+    "Information and communication technology technicians",
+    "Office workers, secretaries in general and data processing operators",
+    "Data, accounting, statistical, financial services and registry-related operators",
+    "Other administrative support staff",
+    "Personal service workers",
+    "Sellers",
+    "Personal care workers and the like",
+    "Protection and security services personnel",
+    "Market-oriented farmers and skilled agricultural and animal production workers",
+    "Farmers, livestock keepers, fishermen, hunters and gatherers, subsistence",
+    "Skilled construction workers and the like, except electricians",
+    "Skilled workers in metallurgy, metalworking and similar",
+    "Skilled workers in electricity and electronics",
+    "Workers in food processing, woodworking, clothing and other industries and crafts",
+    "Fixed plant and machine operators",
+    "Assembly workers",
+    "Vehicle drivers and mobile equipment operators",
+    "Unskilled workers in agriculture, animal production, fisheries and forestry",
+    "Unskilled workers in extractive industry, construction, manufacturing and transport",
+    "Meal preparation assistants",
+    "Street vendors (except food) and street service providers"
+  )
+  df$Father_s_occupation <- factor(x, levels = father_levels, labels = father_labels, ordered = FALSE)
+}
+
+# 9) Target
+if ("Target" %in% names(df)) {
+  # si és text, només assegura factor amb nivells ordenats
+  if (is.factor(df$Target)) df$Target <- as.character(df$Target)
+  if (is.character(df$Target)) df$Target <- trimws(df$Target)
+  df$Target <- factor(df$Target, levels = c("Dropout","Enrolled","Graduate"), ordered = FALSE)
+}
+
 ```
 
 Comprovem si hi ha valors buits
@@ -66,160 +258,38 @@ cat("Files duplicades:", sum(dup_flag), "\n")
 ## 3. Generem informes inicials amb la llibreria SmartEDA per a poder fer l'anàlisi exploratori
 
 ```{r}
-# Sense objectiu (informe general)
-ExpReport(data = df, Target = NULL, op_file = "eda_general_inicial.html")
-
-# Amb objectiu categòric
-ExpReport(data = df, Target = "Target", op_file = "eda_obj_categ_inicial.html", Rc = NULL)
+library(SmartEDA)
+ExpReport(data = df, Target = "Target", op_file = "informe_inicial.html")
 ```
 
-## 4. Apliquem normes de coherència i eliminem outliers
-
-Aplicarem normes de coherència seguint el que té sentit dins de la nostra dataset i eliminarem outliers basant-nos en els resultats del informe inicial. També canviem variables numèriques a categòriques en base als resultats de l'anàlisi exploratori.
-
-Definim les normes de coherència:
-```{r}
-n <- nrow(df)
-viol_Age_out_of_range <- rep(FALSE, n)
-viol_Binary_not_0_1   <- rep(FALSE, n)
-viol_Admission_grade  <- rep(FALSE, n)
-viol_Prevqual_grade   <- rep(FALSE, n)
-viol_S1_nonneg        <- rep(FALSE, n)
-viol_S1_order         <- rep(FALSE, n)
-viol_S1_balance       <- rep(FALSE, n)
-viol_S1_grade         <- rep(FALSE, n)
-viol_S2_nonneg        <- rep(FALSE, n)
-viol_S2_order         <- rep(FALSE, n)
-viol_S2_balance       <- rep(FALSE, n)
-viol_S2_grade         <- rep(FALSE, n)
-viol_Target_domain    <- rep(FALSE, n)
-viol_Macro_range      <- rep(FALSE, n)
-
-# Edat plausible
-if ("Age_at_enrollment" %in% names(df)) {
-  x <- df$Age_at_enrollment
-  viol_Age_out_of_range <- !is.na(x) & (x < 15 | x > 80)
-}
-
-# Columnes binàries 0/1
-bin_cols <- c("Displaced","Educational_special_needs","Debtor",
-              "Tuition_fees_up_to_date","Gender","Scholarship_holder","International")
-for (nm in intersect(bin_cols, names(df))) {
-  x <- df[[nm]]
-  viol_Binary_not_0_1 <- viol_Binary_not_0_1 | (!is.na(x) & !(x %in% c(0, 1)))
-}
-
-# Notes/grades d’admissió i prèvies 
-if ("Admission_grade" %in% names(df)) {
-  x <- df$Admission_grade
-  viol_Admission_grade <- !is.na(x) & (x < 0 | x > 200)
-}
-if ("Previous_qualification_grade" %in% names(df)) {
-  x <- df$Previous_qualification_grade
-  viol_Prevqual_grade <- !is.na(x) & (x < 0 | x > 200)
-}
-
-#1r semestre: coherències de comptatges i nota
-cols_s1 <- c("Curricular_units_1st_sem_enrolled",
-             "Curricular_units_1st_sem_evaluations",
-             "Curricular_units_1st_sem_approved",
-             "Curricular_units_1st_sem_without_evaluations",
-             "Curricular_units_1st_sem_grade")
-if (all(cols_s1 %in% names(df))) {
-  enr1 <- df$Curricular_units_1st_sem_enrolled
-  eva1 <- df$Curricular_units_1st_sem_evaluations
-  app1 <- df$Curricular_units_1st_sem_approved
-  we1  <- df$Curricular_units_1st_sem_without_evaluations
-  gr1  <- df$Curricular_units_1st_sem_grade
-  
-  viol_S1_nonneg  <- (!is.na(enr1) & enr1 < 0) | (!is.na(eva1) & eva1 < 0) | (!is.na(app1) & app1 < 0)
-  viol_S1_order   <- !(is.na(app1) | is.na(enr1) | is.na(eva1) | (app1 <= enr1 & app1 <= eva1))
-  viol_S1_balance <- !(is.na(app1) | is.na(we1) | is.na(enr1) | ((app1 + we1) <= enr1))
-  viol_S1_grade   <- !is.na(gr1) & (gr1 < 0 | gr1 > 20)
-}
-
-# 2n semestre: coherències de comptatges i nota
-cols_s2 <- c("Curricular_units_2nd_sem_enrolled",
-             "Curricular_units_2nd_sem_evaluations",
-             "Curricular_units_2nd_sem_approved",
-             "Curricular_units_2nd_sem_without_evaluations",
-             "Curricular_units_2nd_sem_grade")
-if (all(cols_s2 %in% names(df))) {
-  enr2 <- df$Curricular_units_2nd_sem_enrolled
-  eva2 <- df$Curricular_units_2nd_sem_evaluations
-  app2 <- df$Curricular_units_2nd_sem_approved
-  we2  <- df$Curricular_units_2nd_sem_without_evaluations
-  gr2  <- df$Curricular_units_2nd_sem_grade
-  
-  viol_S2_nonneg  <- (!is.na(enr2) & enr2 < 0) | (!is.na(eva2) & eva2 < 0) | (!is.na(app2) & app2 < 0)
-  viol_S2_order   <- !(is.na(app2) | is.na(enr2) | is.na(eva2) | (app2 <= enr2 & app2 <= eva2))
-  viol_S2_balance <- !(is.na(app2) | is.na(we2) | is.na(enr2) | ((app2 + we2) <= enr2))
-  viol_S2_grade   <- !is.na(gr2) & (gr2 < 0 | gr2 > 20)
-}
-
-# Target dins del domini conegut
-if ("Target" %in% names(df)) {
-  viol_Target_domain <- is.na(df$Target) | !(df$Target %in% c("Dropout","Graduate","Enrolled"))
-}
-
-# Variables macro (rangs molt amplis per només capturar absurds)
-if ("Unemployment_rate" %in% names(df)) {
-  x <- df$Unemployment_rate
-  viol_Macro_range <- viol_Macro_range | (!is.na(x) & (x < -100 | x > 100))
-}
-if ("Inflation_rate" %in% names(df)) {
-  x <- df$Inflation_rate
-  viol_Macro_range <- viol_Macro_range | (!is.na(x) & (x < -100 | x > 100))
-}
-if ("GDP" %in% names(df)) {
-  x <- df$GDP
-  viol_Macro_range <- viol_Macro_range | (!is.na(x) & (x < -100 | x > 100))
-}
-
-# Resum d’infraccions
-viol_mat <- cbind(
-  Age_out_of_range = viol_Age_out_of_range,
-  Binary_not_0_1   = viol_Binary_not_0_1,
-  Admission_out    = viol_Admission_grade,
-  Prevqual_out     = viol_Prevqual_grade,
-  S1_nonneg        = viol_S1_nonneg,
-  S1_order         = viol_S1_order,
-  S1_balance       = viol_S1_balance,
-  S1_grade_out     = viol_S1_grade,
-  S2_nonneg        = viol_S2_nonneg,
-  S2_order         = viol_S2_order,
-  S2_balance       = viol_S2_balance,
-  S2_grade_out     = viol_S2_grade,
-  Target_out       = viol_Target_domain,
-  Macro_out        = viol_Macro_range
-)
-```
-
-les fem aplicar i en visualitzem els resultats:
-```{r}
-viol_any <- apply(viol_mat, 1L, function(z) any(z, na.rm = TRUE))
-cat("Files amb almenys una violació de regles:", sum(viol_any), "\n")
-
-viol_counts <- colSums(viol_mat, na.rm = TRUE)
-viol_summary <- data.frame(rule = names(viol_counts), n = as.integer(viol_counts), row.names = NULL)
-viol_summary <- viol_summary[order(-viol_summary$n), ]
-print(viol_summary)
-```
+## 4. Eliminem outliers
+application_ordre: > 7
+previous_qualification_grade: > 175
+admission_grade: > 175
+age_at_enrollement: transformació BOX-COX
+enrolled1/2: > 11
+evaluations: > 11
+approved: > 11
+grade: transformació BOX-COX
 
 
-## 5. Generem informes finals per a comparar resultats.
+## 5. Transformem algunes variables
+enrolled: categòrica
+credited: binària 0 o altres
+evaluations: categòrica
+aproved: categòrica
+w/o evaluations: binària: 0 o altres
+
+
+## 6. Generem informes finals per a comparar resultats.
 
 ```{r}
 # Sense objectiu (informe general)
 ExpReport(data = df, Target = NULL, op_file = "eda_general_inicial.html")
 
-# Amb objectiu categòric
-ExpReport(data = df, Target = "Target", op_file = "eda_obj_categ_inicial.html", Rc = NULL)
-
-
 ```
 
-## 6. Desem el dataset preprocessat
+## 7. Desem el dataset preprocessat
 ```{r}
 write.csv(df_clean, "clean-data.csv", row.names = FALSE)
 ```
