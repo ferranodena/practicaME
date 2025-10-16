@@ -63,7 +63,19 @@ dup_flag <- duplicated(df) | duplicated(df, fromLast = TRUE)
 cat("Files duplicades:", sum(dup_flag), "\n")
 ```
 
-## 3. Apliquem normes de coherència i eliminem outliers
+## 3. Generem informes inicials amb la llibreria SmartEDA per a poder fer l'anàlisi exploratori
+
+```{r}
+# Sense objectiu (informe general)
+ExpReport(data = df, Target = NULL, op_file = "eda_general_inicial.html")
+
+# Amb objectiu categòric
+ExpReport(data = df, Target = "Target", op_file = "eda_obj_categ_inicial.html", Rc = NULL)
+```
+
+## 4. Apliquem normes de coherència i eliminem outliers
+
+Aplicarem normes de coherència seguint el que té sentit dins de la nostra dataset i eliminarem outliers basant-nos en els resultats del informe inicial. També canviem variables numèriques a categòriques en base als resultats de l'anàlisi exploratori.
 
 Definim les normes de coherència:
 ```{r}
@@ -193,7 +205,21 @@ viol_summary <- data.frame(rule = names(viol_counts), n = as.integer(viol_counts
 viol_summary <- viol_summary[order(-viol_summary$n), ]
 print(viol_summary)
 ```
-## 4. Desem el dataset preprocessat
+
+
+## 5. Generem informes finals per a comparar resultats.
+
+```{r}
+# Sense objectiu (informe general)
+ExpReport(data = df, Target = NULL, op_file = "eda_general_inicial.html")
+
+# Amb objectiu categòric
+ExpReport(data = df, Target = "Target", op_file = "eda_obj_categ_inicial.html", Rc = NULL)
+
+
+```
+
+## 6. Desem el dataset preprocessat
 ```{r}
 write.csv(df_clean, "clean-data.csv", row.names = FALSE)
 ```
