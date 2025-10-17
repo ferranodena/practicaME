@@ -235,6 +235,12 @@ if ("Target" %in% names(df)) {
   if (is.character(df$Target)) df$Target <- trimws(df$Target)
   df$Target <- factor(df$Target, levels = c("Dropout","Enrolled","Graduate"), ordered = FALSE)
 }
+# 1) Target ben definit com a factor
+df$Target <- as.character(df$Target)
+df$Target <- trimws(df$Target)
+df$Target[df$Target == ""] <- NA
+df$Target <- factor(df$Target, levels = c("Dropout","Enrolled","Graduate"))
+df$Target <- droplevels(df$Target)
 
 ```
 
@@ -259,7 +265,14 @@ cat("Files duplicades:", sum(dup_flag), "\n")
 
 ```{r}
 library(SmartEDA)
-ExpReport(data = df, Target = "Target", op_file = "informe_inicial.html")
+library(SmartEDA)
+
+SmartEDA::ExpReport(
+  data   = df,
+  Target = "Target",
+  Rc     = "Graduate"
+  op_file= "informe_inicial.html",
+  theme  = "Default"
 ```
 
 ## 4. Eliminem outliers
@@ -272,6 +285,55 @@ evaluations: > 11
 approved: > 11
 grade: transformació BOX-COX
 
+```{r}
+# Helper: conversió segura a numeric només si cal
+to_numeric_safely <- function(x) {
+  if (is.factor(x)) x <- as.character(x)
+  if (is.character(x)) { x <- trimws(x); x[x == ""] <- NA; x <- suppressWarnings(as.numeric(x)) }
+  x
+}
+
+# Inicialitza màscara
+n <- nrow(df)
+flag <- rep(FALSE, n)
+
+# 1) Application_order > 7
+x <- to_numeric_safely(df$Application_order)
+flag <- flag | (!is.na(x) & x > 7)
+
+# 2) Previous_qualification_grade > 175
+x <- to_numeric_safely(df$Previous_qualification_grade)
+flag <- flag | (!is.na(x) & x > 175)
+
+# 3) Admission_grade > 175
+x <- to_numeric_safely(df$Admission_grade)
+flag <- flag | (!is.na(x) & x > 175)
+
+# 4) Enrolled/Evaluations/Approved > 11 (1r i 2n semestre)
+x <- to_numeric_safely(df$Curricular_units_1st_sem_enrolled)
+flag <- flag | (!is.na(x) & x > 11)
+
+x <- to_numeric_safely(df$Curricular_units_2nd_sem_enrolled)
+flag <- flag | (!is.na(x) & x > 10)
+
+x <- to_numeric_safely(df$Curricular_units_1st_sem_evaluations)
+flag <- flag | (!is.na(x) & x > 10)
+
+x <- to_numeric_safely(df$Curricular_units_2nd_sem_evaluations)
+flag <- flag | (!is.na(x) & x > 10)
+
+x <- to_numeric_safely(df$Curricular_units_1st_sem_approved)
+flag <- flag | (!is.na(x) & x > 10)
+
+x <- to_numeric_safely(df$Curricular_units_2nd_sem_approved)
+flag <- flag | (!is.na(x) & x > 10)
+
+# Informe i filtratge
+cat("Outliers detectats:", sum(flag, na.rm = TRUE), "files\n")
+df <- df[!flag, , drop = FALSE]
+
+```
+
 
 ## 5. Transformem algunes variables
 enrolled: categòrica
@@ -279,14 +341,146 @@ credited: binària 0 o altres
 evaluations: categòrica
 aproved: categòrica
 w/o evaluations: binària: 0 o altres
+```{r}
+# Vector de variables
+vars <- c(
+  "Curricular_units_1st_sem_enrolled",
+  "Curricular_units_2nd_sem_enrolled",
+  "Curricular_units_1st_sem_credited",
+  "Curricular_units_2nd_sem_credited",
+  "Curricular_units_1st_sem_evaluations",
+  "Curricular_units_2nd_sem_evaluations",
+  "Curricular_units_1st_sem_approved",
+  "Curricular_units_2nd_sem_approved",
+  "Curricular_units_1st_sem_without_evaluations",
+  "Curricular_units_2nd_sem_without_evaluations",
+  "Curricular_units_1st_sem_grade",
+  "Curricular_units_2nd_sem_grade"
+)
 
+# Suposa que el teu dataframe es diu df
+n <- length(vars)
+nrow <- ceiling(n / 3)            # 3 columnes per defecte
+op <- par(mfrow = c(1, 2),     # ajusta disposició
+          mar = c(3.2, 3.2, 3.2, 0.8), oma = c(0,0,1,0), mgp = c(2,0.7,0))
+
+on.exit(par(op), add = TRUE)
+
+for (v in vars) {
+  if (!v %in% names(df)) {
+    plot.new()
+    title(main = paste("Falta variable:", v), col.main = "red")
+    next
+  }
+  x <- df[[v]]
+  if (is.factor(x) || is.character(x)) {
+    suppressWarnings(x <- as.numeric(as.character(x)))
+  }
+  x <- x[is.finite(x)]
+
+  qqnorm(x,
+         main = v,
+         pch = 16, cex = 0.6, col = "#1f77b4")
+  qqline(x, col = "#d62728", lwd = 1.5)
+}
+
+```
+Fem canvi de tipus de les variables
+```{r}
+# Curricular_units_1st_sem_enrolled -> categòrica 1..10
+x <- df$Curricular_units_1st_sem_enrolled
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+x <- floor(x)
+x[!is.na(x) & x < 1] <- 1
+x[!is.na(x) & x > 10] <- 10
+df$Curricular_units_1st_sem_enrolled <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+
+# Curricular_units_2nd_sem_enrolled -> categòrica 1..10
+x <- df$Curricular_units_2nd_sem_enrolled
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+x <- floor(x)
+x[!is.na(x) & x < 1] <- 1
+x[!is.na(x) & x > 10] <- 10
+df$Curricular_units_2nd_sem_enrolled <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+
+# Curricular_units_1st_sem_credited -> binària 0/1
+x <- df$Curricular_units_1st_sem_credited
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+b <- ifelse(is.na(x), NA, ifelse(x == 0, 0, 1))
+df$Curricular_units_1st_sem_credited <- factor(b, levels = c(0,1), labels = c("0","1"))
+
+# Curricular_units_2nd_sem_credited -> binària 0/1
+x <- df$Curricular_units_2nd_sem_credited
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+b <- ifelse(is.na(x), NA, ifelse(x == 0, 0, 1))
+df$Curricular_units_2nd_sem_credited <- factor(b, levels = c(0,1), labels = c("0","1"))
+
+# Curricular_units_1st_sem_evaluations -> categòrica 1..10
+x <- df$Curricular_units_1st_sem_evaluations
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+x <- floor(x)
+x[!is.na(x) & x < 1] <- 1
+x[!is.na(x) & x > 10] <- 10
+df$Curricular_units_1st_sem_evaluations <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+
+# Curricular_units_2nd_sem_evaluations -> categòrica 1..10
+x <- df$Curricular_units_2nd_sem_evaluations
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+x <- floor(x)
+x[!is.na(x) & x < 1] <- 1
+x[!is.na(x) & x > 10] <- 10
+df$Curricular_units_2nd_sem_evaluations <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+
+# Curricular_units_1st_sem_approved -> categòrica 1..10
+x <- df$Curricular_units_1st_sem_approved
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+x <- floor(x)
+x[!is.na(x) & x < 1] <- 1
+x[!is.na(x) & x > 10] <- 10
+df$Curricular_units_1st_sem_approved <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+
+# Curricular_units_2nd_sem_approved -> categòrica 1..10
+x <- df$Curricular_units_2nd_sem_approved
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+x <- floor(x)
+x[!is.na(x) & x < 1] <- 1
+x[!is.na(x) & x > 10] <- 10
+df$Curricular_units_2nd_sem_approved <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+
+# Curricular_units_1st_sem_without_evaluations -> binària 0/1
+x <- df$Curricular_units_1st_sem_without_evaluations
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+b <- ifelse(is.na(x), NA, ifelse(x == 0, 0, 1))
+df$Curricular_units_1st_sem_without_evaluations <- factor(b, levels = c(0,1), labels = c("0","1"))
+
+# Curricular_units_2nd_sem_without_evaluations -> binària 0/1
+x <- df$Curricular_units_2nd_sem_without_evaluations
+if (is.factor(x)) x <- as.character(x)
+suppressWarnings(x <- as.numeric(x))
+b <- ifelse(is.na(x), NA, ifelse(x == 0, 0, 1))
+df$Curricular_units_2nd_sem_without_evaluations <- factor(b, levels = c(0,1), labels = c("0","1"))
+
+```
 
 ## 6. Generem informes finals per a comparar resultats.
 
 ```{r}
-# Sense objectiu (informe general)
-ExpReport(data = df, Target = NULL, op_file = "eda_general_inicial.html")
+library(SmartEDA)
 
+SmartEDA::ExpReport(
+  data = df,
+  Target = "Target",
+  op_file = "report.html",
+)      
 ```
 
 ## 7. Desem el dataset preprocessat
