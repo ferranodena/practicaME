@@ -265,25 +265,18 @@ cat("Files duplicades:", sum(dup_flag), "\n")
 
 ```{r}
 library(SmartEDA)
-library(SmartEDA)
 
 SmartEDA::ExpReport(
   data   = df,
   Target = "Target",
-  Rc     = "Graduate"
+  Rc     = "Graduate",
   op_file= "informe_inicial.html",
   theme  = "Default"
+)
 ```
 
 ## 4. Eliminem outliers
-application_ordre: > 7
-previous_qualification_grade: > 175
-admission_grade: > 175
-age_at_enrollement: transformació BOX-COX
-enrolled1/2: > 11
-evaluations: > 11
-approved: > 11
-grade: transformació BOX-COX
+
 
 ```{r}
 # Helper: conversió segura a numeric només si cal
@@ -336,11 +329,7 @@ df <- df[!flag, , drop = FALSE]
 
 
 ## 5. Transformem algunes variables
-enrolled: categòrica
-credited: binària 0 o altres
-evaluations: categòrica
-aproved: categòrica
-w/o evaluations: binària: 0 o altres
+
 ```{r}
 # Vector de variables
 vars <- c(
