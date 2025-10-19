@@ -376,87 +376,60 @@ for (v in vars) {
 ```
 Fem canvi de tipus de les variables
 ```{r}
+## Helpers
+to_numeric_safely <- function(x) {
+  if (is.factor(x)) x <- as.character(x)
+  if (is.character(x)) {
+    x <- trimws(x)
+    x[x == ""] <- NA
+    x <- suppressWarnings(as.numeric(x))
+  }
+  x
+}
+
+ord_1_10 <- function(x) {
+  x <- to_numeric_safely(x)
+  x <- floor(x)
+  x <- pmin(pmax(x, 1), 10)
+  factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+}
+
+bin_01 <- function(x) {
+  x <- to_numeric_safely(x)
+  b <- ifelse(is.na(x), NA, as.integer(x != 0))
+  factor(b, levels = c(0, 1), labels = c("0","1"))
+}
+
+## Conversió de variables
 # Curricular_units_1st_sem_enrolled -> categòrica 1..10
-x <- df$Curricular_units_1st_sem_enrolled
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-x <- floor(x)
-x[!is.na(x) & x < 1] <- 1
-x[!is.na(x) & x > 10] <- 10
-df$Curricular_units_1st_sem_enrolled <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+df$Curricular_units_1st_sem_enrolled <- ord_1_10(df$Curricular_units_1st_sem_enrolled)
 
 # Curricular_units_2nd_sem_enrolled -> categòrica 1..10
-x <- df$Curricular_units_2nd_sem_enrolled
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-x <- floor(x)
-x[!is.na(x) & x < 1] <- 1
-x[!is.na(x) & x > 10] <- 10
-df$Curricular_units_2nd_sem_enrolled <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+df$Curricular_units_2nd_sem_enrolled <- ord_1_10(df$Curricular_units_2nd_sem_enrolled)
 
 # Curricular_units_1st_sem_credited -> binària 0/1
-x <- df$Curricular_units_1st_sem_credited
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-b <- ifelse(is.na(x), NA, ifelse(x == 0, 0, 1))
-df$Curricular_units_1st_sem_credited <- factor(b, levels = c(0,1), labels = c("0","1"))
+df$Curricular_units_1st_sem_credited <- bin_01(df$Curricular_units_1st_sem_credited)
 
 # Curricular_units_2nd_sem_credited -> binària 0/1
-x <- df$Curricular_units_2nd_sem_credited
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-b <- ifelse(is.na(x), NA, ifelse(x == 0, 0, 1))
-df$Curricular_units_2nd_sem_credited <- factor(b, levels = c(0,1), labels = c("0","1"))
+df$Curricular_units_2nd_sem_credited <- bin_01(df$Curricular_units_2nd_sem_credited)
 
 # Curricular_units_1st_sem_evaluations -> categòrica 1..10
-x <- df$Curricular_units_1st_sem_evaluations
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-x <- floor(x)
-x[!is.na(x) & x < 1] <- 1
-x[!is.na(x) & x > 10] <- 10
-df$Curricular_units_1st_sem_evaluations <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+df$Curricular_units_1st_sem_evaluations <- ord_1_10(df$Curricular_units_1st_sem_evaluations)
 
 # Curricular_units_2nd_sem_evaluations -> categòrica 1..10
-x <- df$Curricular_units_2nd_sem_evaluations
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-x <- floor(x)
-x[!is.na(x) & x < 1] <- 1
-x[!is.na(x) & x > 10] <- 10
-df$Curricular_units_2nd_sem_evaluations <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+df$Curricular_units_2nd_sem_evaluations <- ord_1_10(df$Curricular_units_2nd_sem_evaluations)
 
 # Curricular_units_1st_sem_approved -> categòrica 1..10
-x <- df$Curricular_units_1st_sem_approved
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-x <- floor(x)
-x[!is.na(x) & x < 1] <- 1
-x[!is.na(x) & x > 10] <- 10
-df$Curricular_units_1st_sem_approved <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+df$Curricular_units_1st_sem_approved <- ord_1_10(df$Curricular_units_1st_sem_approved)
 
 # Curricular_units_2nd_sem_approved -> categòrica 1..10
-x <- df$Curricular_units_2nd_sem_approved
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-x <- floor(x)
-x[!is.na(x) & x < 1] <- 1
-x[!is.na(x) & x > 10] <- 10
-df$Curricular_units_2nd_sem_approved <- factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+df$Curricular_units_2nd_sem_approved <- ord_1_10(df$Curricular_units_2nd_sem_approved)
 
 # Curricular_units_1st_sem_without_evaluations -> binària 0/1
-x <- df$Curricular_units_1st_sem_without_evaluations
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-b <- ifelse(is.na(x), NA, ifelse(x == 0, 0, 1))
-df$Curricular_units_1st_sem_without_evaluations <- factor(b, levels = c(0,1), labels = c("0","1"))
+df$Curricular_units_1st_sem_without_evaluations <- bin_01(df$Curricular_units_1st_sem_without_evaluations)
 
 # Curricular_units_2nd_sem_without_evaluations -> binària 0/1
-x <- df$Curricular_units_2nd_sem_without_evaluations
-if (is.factor(x)) x <- as.character(x)
-suppressWarnings(x <- as.numeric(x))
-b <- ifelse(is.na(x), NA, ifelse(x == 0, 0, 1))
-df$Curricular_units_2nd_sem_without_evaluations <- factor(b, levels = c(0,1), labels = c("0","1"))
+df$Curricular_units_2nd_sem_without_evaluations <- bin_01(df$Curricular_units_2nd_sem_without_evaluations)
 
 ```
 
@@ -468,7 +441,9 @@ library(SmartEDA)
 SmartEDA::ExpReport(
   data = df,
   Target = "Target",
-  op_file = "report.html",
+  Rc     = "Graduate",
+  op_file= "informe_final.html",
+  theme  = "Default"
 )      
 ```
 
