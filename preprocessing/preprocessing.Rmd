@@ -84,7 +84,7 @@ if ("Course" %in% names(df)) {
   )
 }
 
-# 4) Daytime_evening_attendance (conversió directa a factor sense bloc “binàries”)
+# 4) Daytime_evening_attendance 
 if ("Daytime_evening_attendance" %in% names(df)) {
   x <- to_numeric_safely(df$Daytime_evening_attendance)
   df$Daytime_evening_attendance <- factor(x, levels = c(0,1), labels = c("evening","daytime"), ordered = FALSE)
@@ -229,13 +229,6 @@ if ("Father_s_occupation" %in% names(df)) {
 }
 
 # 9) Target
-if ("Target" %in% names(df)) {
-  # si és text, només assegura factor amb nivells ordenats
-  if (is.factor(df$Target)) df$Target <- as.character(df$Target)
-  if (is.character(df$Target)) df$Target <- trimws(df$Target)
-  df$Target <- factor(df$Target, levels = c("Dropout","Enrolled","Graduate"), ordered = FALSE)
-}
-# 1) Target ben definit com a factor
 df$Target <- as.character(df$Target)
 df$Target <- trimws(df$Target)
 df$Target[df$Target == ""] <- NA
@@ -279,16 +272,18 @@ SmartEDA::ExpReport(
 
 
 ```{r}
-# Helper: conversió segura a numeric només si cal
 to_numeric_safely <- function(x) {
   if (is.factor(x)) x <- as.character(x)
   if (is.character(x)) { x <- trimws(x); x[x == ""] <- NA; x <- suppressWarnings(as.numeric(x)) }
   x
 }
 
-# Inicialitza màscara
 n <- nrow(df)
 flag <- rep(FALSE, n)
+
+# 0) Age at enrollement > 7
+x <- to_numeric_safely(df$Age_at_enrollment)
+flag <- flag | (!is.na(x) & x > 40)
 
 # 1) Application_order > 7
 x <- to_numeric_safely(df$Application_order)
@@ -321,7 +316,6 @@ flag <- flag | (!is.na(x) & x > 10)
 x <- to_numeric_safely(df$Curricular_units_2nd_sem_approved)
 flag <- flag | (!is.na(x) & x > 10)
 
-# Informe i filtratge
 cat("Outliers detectats:", sum(flag, na.rm = TRUE), "files\n")
 df <- df[!flag, , drop = FALSE]
 
@@ -331,7 +325,6 @@ df <- df[!flag, , drop = FALSE]
 ## 5. Transformem algunes variables
 
 ```{r}
-# Vector de variables
 vars <- c(
   "Curricular_units_1st_sem_enrolled",
   "Curricular_units_2nd_sem_enrolled",
@@ -347,7 +340,7 @@ vars <- c(
   "Curricular_units_2nd_sem_grade"
 )
 
-# Suposa que el teu dataframe es diu df
+
 n <- length(vars)
 nrow <- ceiling(n / 3)            # 3 columnes per defecte
 op <- par(mfrow = c(1, 2),     # ajusta disposició
@@ -374,9 +367,9 @@ for (v in vars) {
 }
 
 ```
+
 Fem canvi de tipus de les variables
 ```{r}
-## Helpers
 to_numeric_safely <- function(x) {
   if (is.factor(x)) x <- as.character(x)
   if (is.character(x)) {
@@ -387,67 +380,127 @@ to_numeric_safely <- function(x) {
   x
 }
 
-ord_1_10 <- function(x) {
-  x <- to_numeric_safely(x)
-  x <- floor(x)
-  x <- pmin(pmax(x, 1), 10)
-  factor(x, levels = 1:10, labels = as.character(1:10), ordered = TRUE)
+# Es converteixen a factors ordinals. Definim un rang de nivells de 0 a 30.
+# Qualsevol valor fora d'aquest rang es convertirà en NA.
+ordinal_levels <- 0:30
+ordinal_labels <- as.character(ordinal_levels)
+
+# 1) Curricular_units_1st_sem_enrolled
+if ("Curricular_units_1st_sem_enrolled" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_1st_sem_enrolled)
+  df$Curricular_units_1st_sem_enrolled <- factor(x, levels = ordinal_levels, labels = ordinal_labels, ordered = TRUE)
 }
 
-bin_01 <- function(x) {
-  x <- to_numeric_safely(x)
-  b <- ifelse(is.na(x), NA, as.integer(x != 0))
-  factor(b, levels = c(0, 1), labels = c("0","1"))
+# 2) Curricular_units_2nd_sem_enrolled
+if ("Curricular_units_2nd_sem_enrolled" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_2nd_sem_enrolled)
+  df$Curricular_units_2nd_sem_enrolled <- factor(x, levels = ordinal_levels, labels = ordinal_labels, ordered = TRUE)
 }
 
-## Conversió de variables
-# Curricular_units_1st_sem_enrolled -> categòrica 1..10
-df$Curricular_units_1st_sem_enrolled <- ord_1_10(df$Curricular_units_1st_sem_enrolled)
+# 3) Curricular_units_1st_sem_evaluations
+if ("Curricular_units_1st_sem_evaluations" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_1st_sem_evaluations)
+  df$Curricular_units_1st_sem_evaluations <- factor(x, levels = ordinal_levels, labels = ordinal_labels, ordered = TRUE)
+}
 
-# Curricular_units_2nd_sem_enrolled -> categòrica 1..10
-df$Curricular_units_2nd_sem_enrolled <- ord_1_10(df$Curricular_units_2nd_sem_enrolled)
+# 4) Curricular_units_2nd_sem_evaluations
+if ("Curricular_units_2nd_sem_evaluations" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_2nd_sem_evaluations)
+  df$Curricular_units_2nd_sem_evaluations <- factor(x, levels = ordinal_levels, labels = ordinal_labels, ordered = TRUE)
+}
 
-# Curricular_units_1st_sem_credited -> binària 0/1
-df$Curricular_units_1st_sem_credited <- bin_01(df$Curricular_units_1st_sem_credited)
+# 5) Curricular_units_1st_sem_approved
+if ("Curricular_units_1st_sem_approved" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_1st_sem_approved)
+  df$Curricular_units_1st_sem_approved <- factor(x, levels = ordinal_levels, labels = ordinal_labels, ordered = TRUE)
+}
 
-# Curricular_units_2nd_sem_credited -> binària 0/1
-df$Curricular_units_2nd_sem_credited <- bin_01(df$Curricular_units_2nd_sem_credited)
+# 6) Curricular_units_2nd_sem_approved
+if ("Curricular_units_2nd_sem_approved" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_2nd_sem_approved)
+  df$Curricular_units_2nd_sem_approved <- factor(x, levels = ordinal_levels, labels = ordinal_labels, ordered = TRUE)
+}
 
-# Curricular_units_1st_sem_evaluations -> categòrica 1..10
-df$Curricular_units_1st_sem_evaluations <- ord_1_10(df$Curricular_units_1st_sem_evaluations)
 
-# Curricular_units_2nd_sem_evaluations -> categòrica 1..10
-df$Curricular_units_2nd_sem_evaluations <- ord_1_10(df$Curricular_units_2nd_sem_evaluations)
+# Variables binàries (credited, without_evaluations)
+# Es converteixen a factors 0/1. Qualsevol valor > 0 es considera 1.
 
-# Curricular_units_1st_sem_approved -> categòrica 1..10
-df$Curricular_units_1st_sem_approved <- ord_1_10(df$Curricular_units_1st_sem_approved)
+# 7) Curricular_units_1st_sem_credited
+if ("Curricular_units_1st_sem_credited" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_1st_sem_credited)
+  x_bin <- ifelse(is.na(x), NA, ifelse(x > 0, 1, 0))
+  df$Curricular_units_1st_sem_credited <- factor(x_bin, levels = c(0, 1), labels = c("0", "1"), ordered = FALSE)
+}
 
-# Curricular_units_2nd_sem_approved -> categòrica 1..10
-df$Curricular_units_2nd_sem_approved <- ord_1_10(df$Curricular_units_2nd_sem_approved)
+# 8) Curricular_units_2nd_sem_credited
+if ("Curricular_units_2nd_sem_credited" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_2nd_sem_credited)
+  x_bin <- ifelse(is.na(x), NA, ifelse(x > 0, 1, 0))
+  df$Curricular_units_2nd_sem_credited <- factor(x_bin, levels = c(0, 1), labels = c("0", "1"), ordered = FALSE)
+}
 
-# Curricular_units_1st_sem_without_evaluations -> binària 0/1
-df$Curricular_units_1st_sem_without_evaluations <- bin_01(df$Curricular_units_1st_sem_without_evaluations)
+# 9) Curricular_units_1st_sem_without_evaluations
+if ("Curricular_units_1st_sem_without_evaluations" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_1st_sem_without_evaluations)
+  x_bin <- ifelse(is.na(x), NA, ifelse(x > 0, 1, 0))
+  df$Curricular_units_1st_sem_without_evaluations <- factor(x_bin, levels = c(0, 1), labels = c("0", "1"), ordered = FALSE)
+}
 
-# Curricular_units_2nd_sem_without_evaluations -> binària 0/1
-df$Curricular_units_2nd_sem_without_evaluations <- bin_01(df$Curricular_units_2nd_sem_without_evaluations)
+# 10) Curricular_units_2nd_sem_without_evaluations
+if ("Curricular_units_2nd_sem_without_evaluations" %in% names(df)) {
+  x <- to_numeric_safely(df$Curricular_units_2nd_sem_without_evaluations)
+  x_bin <- ifelse(is.na(x), NA, ifelse(x > 0, 1, 0))
+  df$Curricular_units_2nd_sem_without_evaluations <- factor(x_bin, levels = c(0, 1), labels = c("0", "1"), ordered = FALSE)
+}
+```
+
+Generem valors entre [0,10) per a poder fer servir les variables Curricular_units_1st/2nd_sem_grade
+```{r}
+library(truncnorm)
+
+# Definim els límits de la distribució uniforme
+a <- 0
+b <- 10
+
+# 1. Càlcul de la mitjana teòrica
+mitjana_teorica <- (a + b) / 2
+
+# 2. Càlcul de la desviació estàndard teòrica
+sd_teorica <- (b - a) / sqrt(12)
+
+print(paste("Mitjana teòrica:", mitjana_teorica))
+print(paste("Desviació estàndard teòrica:", sd_teorica))
+
+
+imputa_valors_0_10 <- function(vec, mean_impute = mitjana_teorica, sd_impute = sd_teorica, lower = 0, upper = 10) {
+  # Índex dels valors que actualment estan dins l'interval [0, 10)
+  idx <- which(vec >= lower & vec < upper)
+  
+  n <- length(idx)
+  if (n > 0) {
+    # Genera valors truncats per aquest nombre d'elements
+    new_vals <- rtruncnorm(n, a = lower, b = upper, mean = mean_impute, sd = sd_impute)
+    # Substitueix només aquests valors a la posició corresponent
+    vec[idx] <- new_vals
+  }
+  return(vec)
+}
+
+# Aplica-ho al dataframe així:
+df$Curricular_units_1st_sem_grade <- imputa_valors_0_10(df$Curricular_units_1st_sem_grade)
+df$Curricular_units_2nd_sem_grade <- imputa_valors_0_10(df$Curricular_units_2nd_sem_grade)
 
 ```
 
-## 6. Generem informes finals per a comparar resultats.
+
+## 6. Generem QQ-plots finals per a comparar resultats.
 
 ```{r}
 library(SmartEDA)
-
-SmartEDA::ExpReport(
-  data = df,
-  Target = "Target",
-  Rc     = "Graduate",
-  op_file= "informe_final.html",
-  theme  = "Default"
-)      
+ExpOutQQ(df)
 ```
 
 ## 7. Desem el dataset preprocessat
 ```{r}
-write.csv(df_clean, "clean-data.csv", row.names = FALSE)
+write.csv(df, "clean-data.csv", row.names = FALSE)
 ```
