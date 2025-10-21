@@ -66,6 +66,7 @@ anova(model, model2, test = "Chisq")
 ```{r}
 # Afegim variables al model reduit (utilitzem la comanda step)
 model_step <- step(model, direction = "both")
+summary(model_step)
 ```
 
 ```{r}
@@ -81,7 +82,7 @@ residualPlot(model_step)
 
 ```{r}
 library(car)
-residualPlots()(model_step)
+residualPlots(model_step)
 ```
 
 ```{r}
@@ -92,3 +93,61 @@ influencePlot(model = model_step)
 vif(model_step)
 ```
 
+```{r}
+# Seleccionar variables numèriques correlacionades
+vars_pca <- data[, c(
+  'Curricular_units_1st_sem_credited',
+  'Curricular_units_1st_sem_enrolled',
+  'Curricular_units_1st_sem_evaluations',
+  'Curricular_units_1st_sem_approved',
+  'Curricular_units_2nd_sem_approved',
+  'Curricular_units_2nd_sem_grade',
+  'Curricular_units_2nd_sem_enrolled'
+)]
+```
+
+```{r}
+# Fer PCA amb escalat
+pca_result <- prcomp(vars_pca, center = TRUE, scale. = TRUE)
+
+# Veure resum de variància explicada
+summary(pca_result)
+```
+
+```{r}
+model_polinomic <- glm(
+  Curricular_units_1st_sem_grade ~ 
+    Course +
+    Previous_qualification +
+    Previous_qualification_grade +
+    Admission_grade + I(Admission_grade^2) +
+    Age_at_enrollment + I(Age_at_enrollment^2) +
+    Curricular_units_1st_sem_credited + I(Curricular_units_1st_sem_credited^2) +
+    Curricular_units_1st_sem_enrolled + I(Curricular_units_1st_sem_enrolled^2) +
+    Curricular_units_1st_sem_evaluations + I(Curricular_units_1st_sem_evaluations^2) +
+    Curricular_units_1st_sem_approved + I(Curricular_units_1st_sem_approved^2) +
+    Curricular_units_2nd_sem_enrolled + I(Curricular_units_2nd_sem_enrolled^2) +
+    Curricular_units_2nd_sem_approved + I(Curricular_units_2nd_sem_approved^2) +
+    Curricular_units_2nd_sem_grade + I(Curricular_units_2nd_sem_grade^2) +
+    Unemployment_rate,
+  data = data, family = gaussian()
+)
+summary(model_polinomic)
+```
+
+```{r}
+residualPlot(model_polinomic)
+```
+
+```{r}
+library(car)
+residualPlots(model_step)
+```
+
+```{r}
+influencePlot(model = model_step)
+```
+
+```{r}
+vif(model_step)
+```
