@@ -1,6 +1,7 @@
-# Model 1 fit
+# Model fit
+
+## Carreguem les dades 
 ```{r}
-# Carreguem les dades
 library(readr)
 data <- read_csv("preprocessing/clean-data.csv", col_types = cols(
     Marital_status = col_character(),
@@ -44,26 +45,56 @@ data <- read_csv("preprocessing/clean-data.csv", col_types = cols(
 )
 ```
 
+
+## Descriptiva previa de la variable a estudiar (Admission_grade)
 ```{r}
-# Descriptiva previa de la variable a estudiar (Admission_grade)
 summary(data$Admission_grade)
 hist(data$Admission_grade)
 ```
 
+
+## Construim un mlgz sobre la variable a estudiar i fem el summary
 ```{r}
-# Construim un mlgz sobre la variable a estudiar
 model <- glm(Admission_grade ~ . - Target, data = data, family = gaussian())
 summary(model)
 ```
 
+
+## Construim el model nul
 ```{r}
-# Construim un model reduit, eliminant variables redundants
+model_nul <- glm(Admission_grade ~ 1, data = data, family = gaussian)
+```
+
+
+## Comparem el model que hem fet amb el model nul, per assegurar-nos de que tot funciona correctament (utilitzem el test anova)
+```{r}
+anova(model, model_nul, test="Chisq")
+```
+
+
+
+## Construim un model reduit utilitzant la comanda step, per eliminar variables redundants
+```{r}
 model_step <- step(model, direction = "both")
 ```
 
+
+## Fem un summary del model reduit 
 ```{r}
 summary(model_step)
 ```
+
+
+## Comparem el nou model reduit amb el model anterior, per assegurar-nos de que no hi han diferències estadírticament significatives
+```{r}
+anova(model, model_step, test="Chisq")
+```
+
+
+# Validació del model
+
+
+## Visualitzem diferents gràfics per veure que tan bé funciona el nostre model
 
 ```{r}
 library(car)
@@ -82,9 +113,9 @@ influencePlot(model = model_step)
 vif(model_step)
 ```
 
-# Construim un model model_polinomic
+# Construim un model model_polinomic, ja que el nostre model és millorable
 ```{r}
-model_poly <- glm(
+model_poli <- glm(
   Admission_grade ~ 
     # Numèriques polinòmiques
     Previous_qualification_grade + I(Previous_qualification_grade^2) +
@@ -107,12 +138,14 @@ model_poly <- glm(
 
 ```{r}
 library(car)
-residualPlot(model_poly)
+residualPlot(model_poli)
 ```
 
+
+## Provem a canviar la familia i el link
 ```{r}
 
-model_poly_gamma <- glm(
+model_poly_quasi <- glm(
   Admission_grade ~ 
     Previous_qualification_grade + I(Previous_qualification_grade^2) +
     Age_at_enrollment + I(Age_at_enrollment^2) +
@@ -126,6 +159,20 @@ model_poly_gamma <- glm(
 )
 ```
 
+
+## Visualitzem els gràfics sobre el model
 ```{r}
-residualPlot(model_poly_gamma)
+residualPlot(model_poly_quasi)
+```
+
+```{r}
+residualPlots(model_poly_quasi)
+```
+
+```{r}
+influencePlot(model_poly_quasi)
+```
+
+```{r}
+vif(model_poly_quasi)
 ```
