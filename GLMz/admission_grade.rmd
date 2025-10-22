@@ -2,7 +2,7 @@
 ```{r}
 # Carreguem les dades
 library(readr)
-data <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
+data <- read_csv("preprocessing/clean-data.csv", col_types = cols(
     Marital_status = col_character(),
     Application_mode = col_character(),
     Application_order = col_integer(),
@@ -71,7 +71,15 @@ residualPlot(model_step)
 ```
 
 ```{r}
+residualPlots(model_step)
+```
+
+```{r}
 influencePlot(model = model_step)
+```
+
+```{r}
+vif(model_step)
 ```
 
 # Construim un model model_polinomic
