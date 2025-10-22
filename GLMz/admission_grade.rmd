@@ -176,3 +176,8 @@ influencePlot(model_poly_quasi)
 ```{r}
 vif(model_poly_quasi)
 ```
+
+```{r}
+anova(model_step, model_poly_quasi, test="Chisq")
+
+```
