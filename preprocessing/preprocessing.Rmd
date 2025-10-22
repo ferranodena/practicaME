@@ -283,7 +283,7 @@ flag <- rep(FALSE, n)
 
 # 0) Age at enrollement > 7
 x <- to_numeric_safely(df$Age_at_enrollment)
-flag <- flag | (!is.na(x) & x > 40)
+flag <- flag | (!is.na(x) & x > 30)
 
 # 1) Application_order > 7
 x <- to_numeric_safely(df$Application_order)
@@ -291,11 +291,11 @@ flag <- flag | (!is.na(x) & x > 7)
 
 # 2) Previous_qualification_grade > 175
 x <- to_numeric_safely(df$Previous_qualification_grade)
-flag <- flag | (!is.na(x) & x > 175)
+flag <- flag | (!is.na(x) & x > 170)
 
 # 3) Admission_grade > 175
 x <- to_numeric_safely(df$Admission_grade)
-flag <- flag | (!is.na(x) & x > 175)
+flag <- flag | (!is.na(x) & x > 150)
 
 # 4) Enrolled/Evaluations/Approved > 11 (1r i 2n semestre)
 x <- to_numeric_safely(df$Curricular_units_1st_sem_enrolled)
@@ -337,7 +337,9 @@ vars <- c(
   "Curricular_units_1st_sem_without_evaluations",
   "Curricular_units_2nd_sem_without_evaluations",
   "Curricular_units_1st_sem_grade",
-  "Curricular_units_2nd_sem_grade"
+  "Curricular_units_2nd_sem_grade",
+  "Application_order",
+  "Admission_grade"
 )
 
 
@@ -384,6 +386,14 @@ to_numeric_safely <- function(x) {
 # Qualsevol valor fora d'aquest rang es convertirà en NA.
 ordinal_levels <- 0:30
 ordinal_labels <- as.character(ordinal_levels)
+
+
+# 1) Curricular_units_1st_sem_enrolled
+if ("" %in% names(df)) {
+  x <- to_numeric_safely(df$Application_order)
+  df$Application_order <- factor(x, levels = ordinal_levels, labels = ordinal_labels, ordered = TRUE)
+}
+
 
 # 1) Curricular_units_1st_sem_enrolled
 if ("Curricular_units_1st_sem_enrolled" %in% names(df)) {
@@ -453,45 +463,6 @@ if ("Curricular_units_2nd_sem_without_evaluations" %in% names(df)) {
   df$Curricular_units_2nd_sem_without_evaluations <- factor(x_bin, levels = c(0, 1), labels = c("0", "1"), ordered = FALSE)
 }
 ```
-
-Generem valors entre [0,10) per a poder fer servir les variables Curricular_units_1st/2nd_sem_grade
-```{r}
-library(truncnorm)
-
-# Definim els límits de la distribució uniforme
-a <- 0
-b <- 10
-
-# 1. Càlcul de la mitjana teòrica
-mitjana_teorica <- (a + b) / 2
-
-# 2. Càlcul de la desviació estàndard teòrica
-sd_teorica <- (b - a) / sqrt(12)
-
-print(paste("Mitjana teòrica:", mitjana_teorica))
-print(paste("Desviació estàndard teòrica:", sd_teorica))
-
-
-imputa_valors_0_10 <- function(vec, mean_impute = mitjana_teorica, sd_impute = sd_teorica, lower = 0, upper = 10) {
-  # Índex dels valors que actualment estan dins l'interval [0, 10)
-  idx <- which(vec >= lower & vec < upper)
-  
-  n <- length(idx)
-  if (n > 0) {
-    # Genera valors truncats per aquest nombre d'elements
-    new_vals <- rtruncnorm(n, a = lower, b = upper, mean = mean_impute, sd = sd_impute)
-    # Substitueix només aquests valors a la posició corresponent
-    vec[idx] <- new_vals
-  }
-  return(vec)
-}
-
-# Aplica-ho al dataframe així:
-df$Curricular_units_1st_sem_grade <- imputa_valors_0_10(df$Curricular_units_1st_sem_grade)
-df$Curricular_units_2nd_sem_grade <- imputa_valors_0_10(df$Curricular_units_2nd_sem_grade)
-
-```
-
 
 ## 6. Generem QQ-plots finals per a comparar resultats.
 

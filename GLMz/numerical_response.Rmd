@@ -9,7 +9,46 @@ date: "15/10/2025"
 ```{r}
 # Carreguem les dades
 library(readr)
-data <- read_csv("preprocessing/clean-data.csv")
+data <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
+    Marital_status = col_character(),
+    Application_mode = col_character(),
+    Application_order = col_integer(),
+    Course = col_character(),
+    Daytime_evening_attendance = col_character(),
+    Previous_qualification = col_character(),
+    Previous_qualification_grade = col_double(),
+    Nacionality = col_character(),
+    Mother_s_qualification = col_integer(),
+    Father_s_qualification = col_integer(),
+    Mother_s_occupation = col_character(),
+    Father_s_occupation = col_character(),
+    Admission_grade = col_double(),
+    Displaced = col_integer(),
+    Educational_special_needs = col_integer(),
+    Debtor = col_integer(),
+    Tuition_fees_up_to_date = col_integer(),
+    Gender = col_integer(),
+    Scholarship_holder = col_integer(),
+    Age_at_enrollment = col_integer(),
+    International = col_integer(),
+    Curricular_units_1st_sem_credited = col_integer(),
+    Curricular_units_1st_sem_enrolled = col_integer(),
+    Curricular_units_1st_sem_evaluations = col_integer(),
+    Curricular_units_1st_sem_approved = col_integer(),
+    Curricular_units_1st_sem_grade = col_double(),
+    Curricular_units_1st_sem_without_evaluations = col_integer(),
+    Curricular_units_2nd_sem_credited = col_integer(),
+    Curricular_units_2nd_sem_enrolled = col_integer(),
+    Curricular_units_2nd_sem_evaluations = col_integer(),
+    Curricular_units_2nd_sem_approved = col_integer(),
+    Curricular_units_2nd_sem_grade = col_double(),
+    Curricular_units_2nd_sem_without_evaluations = col_integer(),
+    Unemployment_rate = col_double(),
+    Inflation_rate = col_double(),
+    GDP = col_double(),
+    Target = col_character()
+  )
+)
 ```
 
 ```{r}
@@ -245,7 +284,7 @@ residualPlot(model_step)
 
 ```{r}
 library(car)
-residualPlots(model_step)
+residualPlot(model_step)
 ```
 
 ```{r}
