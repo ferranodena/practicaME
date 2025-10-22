@@ -1,0 +1,87 @@
+# Model 1 fit
+```{r}
+# Carreguem les dades
+library(readr)
+data <- read_csv("preprocessing/clean-data.csv")
+```
+
+```{r}
+# Descriptiva previa de la variable a estudiar (Admission_grade)
+summary(data$Admission_grade)
+hist(data$Admission_grade)
+```
+
+```{r}
+# Construim un mlgz sobre la variable a estudiar
+model <- glm(Admission_grade ~ . - Target, data = data, family = gaussian())
+summary(model)
+```
+
+```{r}
+# Construim un model reduit, eliminant variables redundants
+model_step <- step(model, direction = "both")
+```
+
+```{r}
+summary(model_step)
+```
+
+```{r}
+library(car)
+residualPlot(model_step)
+```
+
+```{r}
+influencePlot(model = model_step)
+```
+
+# Construim un model model_polinomic
+```{r}
+model_poly <- glm(
+  Admission_grade ~ 
+    # Numèriques polinòmiques
+    Previous_qualification_grade + I(Previous_qualification_grade^2) +
+    Age_at_enrollment + I(Age_at_enrollment^2) +
+    Curricular_units_1st_sem_evaluations + I(Curricular_units_1st_sem_evaluations^2) +
+    Curricular_units_1st_sem_grade + I(Curricular_units_1st_sem_grade^2) +
+    Unemployment_rate + I(Unemployment_rate^2) +
+    
+    # Numèriques lineals menys significatives
+    Inflation_rate + GDP +
+    
+    # Categòriques significatives
+    Application_mode + Application_order + 
+    Course + Previous_qualification + Father_s_qualification,
+    
+  data = data,
+  family = gaussian(link = "identity")
+)
+```
+
+```{r}
+library(car)
+residualPlot(model_poly)
+```
+
+```{r}
+model_poly_gamma <- glm(
+  Admission_grade ~ 
+    Previous_qualification_grade + I(Previous_qualification_grade^3) +
+    Age_at_enrollment + I(Age_at_enrollment^3) +
+    Curricular_units_1st_sem_evaluations + I(Curricular_units_1st_sem_evaluations^2) +
+    Curricular_units_1st_sem_grade + I(Curricular_units_1st_sem_grade^2) +
+    Unemployment_rate + I(Unemployment_rate^2) +
+    Inflation_rate + GDP +
+    Application_mode + Application_order + Course + Previous_qualification + Father_s_qualification,
+  data = data,
+  family = Gamma(link = "log")
+)
+```
+
+```{r}
+residualPlot(model_poly_gamma)
+```
+
+```{r}
+residualPlots(model_poly_gamma)
+```
