@@ -63,7 +63,7 @@ if ("Target" %in% names(base)) base <- dplyr::select(base, -Target)
 
 # Abans del model, després d’haver eliminat Target
 base <- base %>%
-  mutate(across(where(is.factor), ~ fct_lump_min(.x, min = 50, other_level = "Other")))
+  mutate(across(where(is.factor), ~ fct_lump_min(.x, min = 100, other_level = "Other")))
 
 # Ara el full model
 m0 <- glm(target ~ ., data = base, family = binomial(link = "logit"))
@@ -105,6 +105,8 @@ m0.2 <- step(m0, direction = "both",
              trace = FALSE)
 
 summary(m0.2)
+AIC(m0, m0.1, m0.2)
+BIC(m0, m0.1, m0.2)
 
 #m0 (complet): 72 df, AIC = 1484.7, BIC = 1905.0
 
@@ -235,15 +237,21 @@ anova(m3.3, m3.4, test = "Chisq")
 cbind(AIC(m3.1, m3.2, m3.3, m3.4),
       BIC = BIC(m3.1, m3.2, m3.3, m3.4)[,2])
 
-
+par(mfrow = c(4, 4)) 
 residualPlots(m1.4, layout = c(1, 2))
 residualPlots(m2.3, layout = c(1, 2))
 residualPlots(m3.3, layout = c(1, 2))
 
 
+par(mfrow = c(4, 4)) 
+residualPlot(m1.4, term = "units1", type = "pearson",
+             id.n = 0, ylim = c(-3, 3))
 
+residualPlot(m2.3, term = "units1", type = "pearson",
+             id.n = 0, ylim = c(-3, 3))
 
-
+residualPlot(m3.3, term = "units1", type = "pearson",
+             id.n = 0, ylim = c(-3, 3))
 
 #Actualitzem el model m0.1 amb els polinomis adequats
 m0.3 <- glm(target ~ Course + Application_mode + Mother_s_qualification + 
@@ -300,6 +308,7 @@ anova(m0.3, m0.5, test = "Chisq")
 BIC(m0.1, m0.3, m0.5) 
 AIC(m0.1, m0.3, m0.5)
 
+plot(allEffects(m0.5))
 
 
 # Comparació de diferent link
