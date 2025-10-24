@@ -92,8 +92,8 @@ summary(m0.1)
 #Comparem AIC/BIC amb el model complet (m0) per veure si ha empitjorat molt i
 #cal recuperar alguna variable
 
-AIC(m0, m0.1)
-BIC(m0, m0.1)
+AmIC(m0, m0.1)
+BIC(0, m0.1)
 
 #Contribució de cada variable al model reduït
 Anova(m0.1, test.statistic = 'LR')  
@@ -124,4 +124,4 @@ anova(m0.2, m0.1, test = "Chisq")
 par(mfrow = c(1, 1)) # finestra 1x1
 residualPlots(m0.1, ~ 1, type = "pearson") #residus vs ajustats
 
-residualPlots(m0.1, layout = c(5,5), ask = FALSE, tests = FALSE) #residus vs cada variable explicativa
+residualPlots(m0.1, layout = c(4,4), ask = FALSE, tests = FALSE) #residus vs cada variable explicativa
