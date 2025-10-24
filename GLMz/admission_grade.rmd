@@ -3,7 +3,7 @@
 ## Carreguem les dades 
 ```{r}
 library(readr)
-data <- read_csv("preprocessing/clean-data.csv", col_types = cols(
+data <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
     Marital_status = col_character(),
     Application_mode = col_character(),
     Application_order = col_integer(),
@@ -141,11 +141,28 @@ library(car)
 residualPlot(model_poli)
 ```
 
+```{r}
+library(car)
+residualPlots(model_poli)
+```
+
+```{r}
+library(car)
+influencePlot(model_poli)
+```
+
+```{r}
+anova(model_step, model_poli, test='Chisq')
+```
+
+
+
+
 
 ## Provem a canviar la familia i el link
 ```{r}
 
-model_poly_quasi <- glm(
+model_poli_gamma <- glm(
   Admission_grade ~ 
     Previous_qualification_grade + I(Previous_qualification_grade^2) +
     Age_at_enrollment + I(Age_at_enrollment^2) +
@@ -155,23 +172,28 @@ model_poly_quasi <- glm(
     Inflation_rate + GDP +
     Application_mode + Application_order + Course + Previous_qualification + Father_s_qualification,
   data = data,
-  family = quasipoisson(link = "log")
+  family = Gamma(link = "log")
 )
 ```
 
 
 ## Visualitzem els gràfics sobre el model
 ```{r}
-residualPlot(model_poly_quasi)
+residualPlot(model_poli_quasi)
 ```
 
 ```{r}
-residualPlots(model_poly_quasi)
+residualPlots(model_poli_quasi)
 ```
 
 ```{r}
-influencePlot(model_poly_quasi)
+influencePlot(model_poli_quasi)
 ```
+
+```{r}
+anova(model_step, model_poli_quasi)
+```
+
 
 ```{r}
 vif(model_poly_quasi)
@@ -179,5 +201,20 @@ vif(model_poly_quasi)
 
 ```{r}
 anova(model_step, model_poly_quasi, test="Chisq")
+```
+
+# Provem a crear un model amb familia gamma, link log
+```{r}
+model_gamma <- glm(Admission_grade ~ . - Target, data = data, family = Gamma(link='log'))
+summary(model)
+```
+
+```{r}
+model_step_gamma <- step(model_gamma, direction = "both")
+```
+
+```{r}
+AIC(model_step, model_step_gamma)
+BIC(model_step, model_step_gamma)
 
 ```
