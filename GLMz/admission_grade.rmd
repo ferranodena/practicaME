@@ -1,6 +1,6 @@
-# Model fit
 
-## Carreguem les dades 
+## 0. Carreguem i anàlisi inicial
+Carreguem les dades 
 ```{r}
 library(readr)
 data <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
@@ -46,175 +46,90 @@ data <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
 ```
 
 
-## Descriptiva previa de la variable a estudiar (Admission_grade)
+Descriptiva previa de la variable a estudiar (Admission_grade)
 ```{r}
 summary(data$Admission_grade)
 hist(data$Admission_grade)
 ```
 
+## 1. Model complet i model nul
 
-## Construim un mlgz sobre la variable a estudiar i fem el summary
+Construim un mlgz sobre la variable a estudiar i fem el summary
 ```{r}
-model <- glm(Admission_grade ~ . - Target, data = data, family = gaussian())
-summary(model)
+model_complet <- glm(Admission_grade ~ . - Target, data = data, family = gaussian())
+summary(model_complet)
 ```
 
 
-## Construim el model nul
+Construim el model nul
 ```{r}
 model_nul <- glm(Admission_grade ~ 1, data = data, family = gaussian)
 ```
 
 
-## Comparem el model que hem fet amb el model nul, per assegurar-nos de que tot funciona correctament (utilitzem el test anova)
+Comparem el model complet amb el model nul, per assegurar-nos de que tot funciona correctament (utilitzem el test anova)
 ```{r}
-anova(model, model_nul, test="Chisq")
+anova(model_complet, model_nul, test="Chisq")
 ```
 
 
+## 2. Construcció d'un model amb les variables més significatives
 
-## Construim un model reduit utilitzant la comanda step, per eliminar variables redundants
+Construïm el model
 ```{r}
-model_step <- step(model, direction = "both")
+# Ajusta el model amb les variables més significatives
+model_1 <- glm(Admission_grade ~ 
+                       Application_mode + 
+                       Course + 
+                       Previous_qualification + 
+                       Previous_qualification_grade + 
+                       Age_at_enrollment + 
+                       Unemployment_rate + 
+                       Application_order + 
+                       Curricular_units_1st_sem_evaluations + 
+                       GDP, 
+                     data = data, 
+                     family = gaussian())
+
+
+```
+
+Comparem el model que hem fet amb el model complet, per assegurar-nos de que tot funciona correctament (utilitzem el test anova)
+```{r}
+anova(model_1, model_complet, test="Chisq")
 ```
 
 
-## Fem un summary del model reduit 
+## 3. Construim un model reduit utilitzant la comanda step, per eliminar variables redundants.
 ```{r}
-summary(model_step)
+model_final <- step(model_complet, direction = "both")
 ```
 
-
-## Comparem el nou model reduit amb el model anterior, per assegurar-nos de que no hi han diferències estadírticament significatives
+Comparem el nou model reduit amb el model anterior, per assegurar-nos de que no hi han diferències estadísticament significatives
 ```{r}
-anova(model, model_step, test="Chisq")
+anova(model_complet, model_final, test="Chisq")
+```
+Mirem la puntuació AIC d'ambdós models
+```{r}
+AIC(model_complet)
+AIC(model_final)
 ```
 
+## 4. Validació del model
 
-# Validació del model
 
-
-## Visualitzem diferents gràfics per veure que tan bé funciona el nostre model
+Visualitzem diferents gràfics per veure que tan bé funciona el nostre model
 
 ```{r}
 library(car)
-residualPlot(model_step)
-```
-
-```{r}
-residualPlots(model_step)
-```
-
-```{r}
-influencePlot(model = model_step)
-```
-
-```{r}
-vif(model_step)
-```
-
-# Construim un model model_polinomic, ja que el nostre model és millorable
-```{r}
-model_poli <- glm(
-  Admission_grade ~ 
-    # Numèriques polinòmiques
-    Previous_qualification_grade + I(Previous_qualification_grade^2) +
-    Age_at_enrollment + I(Age_at_enrollment^2) +
-    Curricular_units_1st_sem_evaluations + I(Curricular_units_1st_sem_evaluations^2) +
-    Curricular_units_1st_sem_grade + I(Curricular_units_1st_sem_grade^2) +
-    Unemployment_rate + I(Unemployment_rate^2) +
-    
-    # Numèriques lineals menys significatives
-    Inflation_rate + GDP +
-    
-    # Categòriques significatives
-    Application_mode + Application_order + 
-    Course + Previous_qualification + Father_s_qualification,
-    
-  data = data,
-  family = gaussian(link = "identity")
-)
+residualPlot(model_final)
 ```
 
 ```{r}
 library(car)
-residualPlot(model_poli)
+residualPlots(model_final, layout = c(2, 2), ask = FALSE)
 ```
 
 ```{r}
-library(car)
-residualPlots(model_poli)
-```
-
-```{r}
-library(car)
-influencePlot(model_poli)
-```
-
-```{r}
-anova(model_step, model_poli, test='Chisq')
-```
-
-
-
-
-
-## Provem a canviar la familia i el link
-```{r}
-
-model_poli_gamma <- glm(
-  Admission_grade ~ 
-    Previous_qualification_grade + I(Previous_qualification_grade^2) +
-    Age_at_enrollment + I(Age_at_enrollment^2) +
-    Curricular_units_1st_sem_evaluations + I(Curricular_units_1st_sem_evaluations^2) +
-    Curricular_units_1st_sem_grade + I(Curricular_units_1st_sem_grade^2) +
-    Unemployment_rate + I(Unemployment_rate^2) +
-    Inflation_rate + GDP +
-    Application_mode + Application_order + Course + Previous_qualification + Father_s_qualification,
-  data = data,
-  family = Gamma(link = "log")
-)
-```
-
-
-## Visualitzem els gràfics sobre el model
-```{r}
-residualPlot(model_poli_quasi)
-```
-
-```{r}
-residualPlots(model_poli_quasi)
-```
-
-```{r}
-influencePlot(model_poli_quasi)
-```
-
-```{r}
-anova(model_step, model_poli_quasi)
-```
-
-
-```{r}
-vif(model_poly_quasi)
-```
-
-```{r}
-anova(model_step, model_poly_quasi, test="Chisq")
-```
-
-# Provem a crear un model amb familia gamma, link log
-```{r}
-model_gamma <- glm(Admission_grade ~ . - Target, data = data, family = Gamma(link='log'))
-summary(model)
-```
-
-```{r}
-model_step_gamma <- step(model_gamma, direction = "both")
-```
-
-```{r}
-AIC(model_step, model_step_gamma)
-BIC(model_step, model_step_gamma)
-
+influencePlot(model = model_final)
 ```

@@ -6,33 +6,54 @@ library(multcomp)      # funcio cld
 library(multcompView)  # funcio cld    
 library(dplyr)         # manipulació de dades
 library(forcats)
-
+library(readr)
 
 #Llegir dades  -------------------------------------------------------------------
-base <- read.csv("clean-data.csv", stringsAsFactors = FALSE)
-base <- base %>%
-  dplyr::mutate(
-    dplyr::across(
-      c(Marital_status, Application_mode, Course, Daytime_evening_attendance,
-        Previous_qualification, Nacionality, Mother_s_occupation, Father_s_occupation,
-        Displaced, Educational_special_needs, Debtor, Tuition_fees_up_to_date,
-        Gender, Scholarship_holder, International,
-        Curricular_units_1st_sem_credited, Curricular_units_1st_sem_without_evaluations,
-        Curricular_units_2nd_sem_credited, Curricular_units_2nd_sem_without_evaluations),
-      as.factor
-    )
-  )
-
+base <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
+  Marital_status = col_character(),
+  Application_mode = col_character(),
+  Application_order = col_integer(),
+  Course = col_character(),
+  Daytime_evening_attendance = col_character(),
+  Previous_qualification = col_character(),
+  Previous_qualification_grade = col_double(),
+  Nacionality = col_character(),
+  Mother_s_qualification = col_integer(),
+  Father_s_qualification = col_integer(),
+  Mother_s_occupation = col_character(),
+  Father_s_occupation = col_character(),
+  Admission_grade = col_double(),
+  Displaced = col_integer(),
+  Educational_special_needs = col_integer(),
+  Debtor = col_integer(),
+  Tuition_fees_up_to_date = col_integer(),
+  Gender = col_integer(),
+  Scholarship_holder = col_integer(),
+  Age_at_enrollment = col_integer(),
+  International = col_integer(),
+  Curricular_units_1st_sem_credited = col_integer(),
+  Curricular_units_1st_sem_enrolled = col_integer(),
+  Curricular_units_1st_sem_evaluations = col_integer(),
+  Curricular_units_1st_sem_approved = col_integer(),
+  Curricular_units_1st_sem_grade = col_double(),
+  Curricular_units_1st_sem_without_evaluations = col_integer(),
+  Curricular_units_2nd_sem_credited = col_integer(),
+  Curricular_units_2nd_sem_enrolled = col_integer(),
+  Curricular_units_2nd_sem_evaluations = col_integer(),
+  Curricular_units_2nd_sem_approved = col_integer(),
+  Curricular_units_2nd_sem_grade = col_double(),
+  Curricular_units_2nd_sem_without_evaluations = col_integer(),
+  Unemployment_rate = col_double(),
+  Inflation_rate = col_double(),
+  GDP = col_double(),
+  Target = col_character()
+)
+)
 #Modifiquem la variable resposta a 0/1 -------------------------------------------
 
-base <- base %>%
-  dplyr::mutate(
-    target = dplyr::case_when(
-      Target %in% c("dropout", "Dropout", "DROPOUT") ~ 1L,
-      Target %in% c("enrolled", "graduated", "Enrolled", "Graduated") ~ 0L,
-      TRUE ~ 0L
-    )
-  )
+x <- tolower(as.character(base$Target))   # normalitza a minúscules
+base$target <- ifelse(x == "dropout", 1L,
+                             ifelse(x %in% c("enrolled","graduated"), 0L, 0L))
 
 # Resum de la base de dades ------------------------------------------------------
 summary(base)
@@ -40,18 +61,21 @@ summary(base)
 
 # Exploració gràfica de les variables explicatives -----------------------------
 # Seleccionem totes les variables excepte la resposta 'target'
-vars <- setdiff(colnames(base), c("Target","target"))
+vars <- setdiff(names(base), c("Target","target"))
 
-par(mfrow=c(4,5), mar=c(3,3,3,1)) # finestra 4x5, marges
-colors <- c(2,3)                  # colors: vermell i verd
+par(mfrow = c(4,5), mar = c(3,3,3,1))
+colors <- c(2,3)  # vermell i verd
 
-# Boxplot si numèrica, barplot si factor
-for (v in vars){
-  if (!is.factor(base[[v]])){
-    form <- as.formula(paste0(v," ~ target"))
-    boxplot(form, base, main = v, col = colors, horizontal = TRUE)
+for (v in vars) {
+  xv <- base[[v]]
+  if (is.numeric(xv)) {
+    # Grup de boxplot ha de ser factor perquè etiqueti bé
+    boxplot(xv ~ factor(base$target, levels=c(0,1), labels=c("stay","dropout")),
+            main = v, col = colors, horizontal = TRUE)
   } else {
-    tab <- prop.table(table(base$target, base[[v]]), 2)
+    # Converteix a factor i calcula proporcions per columna
+    fac <- factor(xv)
+    tab <- prop.table(table(base$target, fac), 2)
     barplot(tab, main = v, col = colors, legend = FALSE)
   }
 }

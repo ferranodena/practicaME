@@ -1,0 +1,139 @@
+
+## 0. Carreguem llibreries i dades
+
+```{r}
+#Carregar llibreries ----------------------------------------------------------------
+library(effects)
+library(car)           # funcio Anova
+library(emmeans)       # funcio emmeans
+library(multcomp)      # funcio cld
+library(multcompView)  # funcio cld    
+library(dplyr)         # manipulació de dades
+library(forcats)
+library(readr)
+```
+
+```{r}
+base <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
+  Marital_status = col_character(),
+  Application_mode = col_character(),
+  Application_order = col_integer(),
+  Course = col_character(),
+  Daytime_evening_attendance = col_character(),
+  Previous_qualification = col_character(),
+  Previous_qualification_grade = col_double(),
+  Nacionality = col_character(),
+  Mother_s_qualification = col_integer(),
+  Father_s_qualification = col_integer(),
+  Mother_s_occupation = col_character(),
+  Father_s_occupation = col_character(),
+  Admission_grade = col_double(),
+  Displaced = col_integer(),
+  Educational_special_needs = col_integer(),
+  Debtor = col_integer(),
+  Tuition_fees_up_to_date = col_integer(),
+  Gender = col_integer(),
+  Scholarship_holder = col_integer(),
+  Age_at_enrollment = col_integer(),
+  International = col_integer(),
+  Curricular_units_1st_sem_credited = col_integer(),
+  Curricular_units_1st_sem_enrolled = col_integer(),
+  Curricular_units_1st_sem_evaluations = col_integer(),
+  Curricular_units_1st_sem_approved = col_integer(),
+  Curricular_units_1st_sem_grade = col_double(),
+  Curricular_units_1st_sem_without_evaluations = col_integer(),
+  Curricular_units_2nd_sem_credited = col_integer(),
+  Curricular_units_2nd_sem_enrolled = col_integer(),
+  Curricular_units_2nd_sem_evaluations = col_integer(),
+  Curricular_units_2nd_sem_approved = col_integer(),
+  Curricular_units_2nd_sem_grade = col_double(),
+  Curricular_units_2nd_sem_without_evaluations = col_integer(),
+  Unemployment_rate = col_double(),
+  Inflation_rate = col_double(),
+  GDP = col_double(),
+  Target = col_character()
+)
+)
+```
+
+## 1. Modifiquem la variable resposta a binària
+
+```{r}
+x <- tolower(as.character(base$Target))   # normalitza a minúscules
+base$target <- ifelse(x == "dropout", 1L,
+                             ifelse(x %in% c("enrolled","graduated"), 0L, 0L))
+```
+
+## 2. Anàlisi exploratori
+
+Exploració gràfica de les variables explicatives
+```{r}
+vars <- setdiff(names(base), c("Target","target"))
+
+par(mfrow = c(4,5), mar = c(3,3,3,1))
+colors <- c(2,3)  # vermell i verd
+
+for (v in vars) {
+  xv <- base[[v]]
+  if (is.numeric(xv)) {
+    # Grup de boxplot ha de ser factor perquè etiqueti bé
+    boxplot(xv ~ factor(base$target, levels=c(0,1), labels=c("stay","dropout")),
+            main = v, col = colors, horizontal = TRUE)
+  } else {
+    # Converteix a factor i calcula proporcions per columna
+    fac <- factor(xv)
+    tab <- prop.table(table(base$target, fac), 2)
+    barplot(tab, main = v, col = colors, legend = FALSE)
+  }
+}
+```
+
+Eliminem la variable Target per evitar problemes
+```{r}
+if ("Target" %in% names(base)) {
+  base <- base[ , setdiff(names(base), "Target"), drop = FALSE]
+}
+```
+
+
+Agrupem, de totes les variables categòriques, nivells amb menys de 50 observacions dins la categoria “Other”.
+
+```{r}
+base <- base %>%
+  mutate(across(where(is.factor), ~ fct_lump_min(.x, min = 25, other_level = "Other")))
+```
+  
+## 3. Model complet i model nul
+
+```{r}
+model_complet <- glm(target ~ ., data = base, family = binomial(link = "logit"))
+model_nul <- glm(target ~ 1, data = base, family = binomial(link = "logit"))
+```
+
+```{r}
+anova(model_complet, test = "Chisq")
+```
+
+## 4. Construcció del primer model
+
+El construïm a partir de les més explicatves
+```{r}
+m0.1 <- glm(
+  target ~ Application_mode +
+           Course +
+           Mother_s_occupation +
+           Debtor +
+           Tuition_fees_up_to_date +
+           Gender +
+           Scholarship_holder +
+           Age_at_enrollment +
+           Curricular_units_1st_sem_evaluations +
+           Curricular_units_1st_sem_approved +
+           Curricular_units_2nd_sem_approved,
+  data = base,
+  family = binomial(),
+)
+anova(m0.1, model_complet, test = "Chisq")
+AIC(model_complet, m0.1)
+BIC(model_complet, m0.1)
+```
