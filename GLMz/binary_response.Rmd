@@ -5,12 +5,11 @@
 #Carregar llibreries ----------------------------------------------------------------
 library(effects)
 library(car)           # funcio Anova
-library(emmeans)       # funcio emmeans
-library(multcomp)      # funcio cld
-library(multcompView)  # funcio cld    
 library(dplyr)         # manipulació de dades
 library(forcats)
 library(readr)
+library(ROCR)
+library(detectseparation)
 ```
 
 ```{r}
@@ -70,8 +69,8 @@ Exploració gràfica de les variables explicatives
 ```{r}
 vars <- setdiff(names(base), c("Target","target"))
 
-par(mfrow = c(4,5), mar = c(3,3,3,1))
-colors <- c(2,3)  # vermell i verd
+par(mfrow = c(3,3), mar = c(3,3,3,1))
+colors <- c(3,2)  # vermell i verd
 
 for (v in vars) {
   xv <- base[[v]]
@@ -112,9 +111,6 @@ anova(model_complet, test = "Chisq")
 Com que a l'executar el test Òmnibus del model complet, ens surt l'advertiment "Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred", això pot indicar separació o quasiseparació en les nostres dades. L'intentarem diagnosticar fent ús de la llibreria detectseparation
 
 ```{r}
-install.packages("detectseparation") 
-library(detectseparation)
-
 X <- model.matrix(target ~ ., data = base)
 
 y <- base$target
@@ -129,13 +125,13 @@ Els resultats ens indiquen que SÍ hi ha separació o quasiseparació en les nos
 ```{r}
 base <- base %>%
   mutate(
-    Application_mode = fct_lump_min(Application_mode, min = 50, other_level = "Other"),
-    Course = fct_lump_min(Course, min = 50, other_level = "Other"),
-    Previous_qualification = fct_lump_min(Previous_qualification, min = 50, other_level = "Other"),
-    Nacionality = fct_lump_min(Nacionality, min = 50, other_level = "Other"),
-    Mother_s_occupation = fct_lump_min(Mother_s_occupation, min = 50, other_level = "Other"),
-    Father_s_occupation = fct_lump_min(Father_s_occupation, min = 50, other_level = "Other"),
-    Marital_status = fct_lump_min(Marital_status, min = 50, other_level = "Other")
+    Course = fct_lump_min(Course, min = 150, other_level = "Other"),
+    Previous_qualification = fct_lump_min(Previous_qualification, min = 150, other_level = "Other"),
+    Nacionality = fct_lump_min(Nacionality, min = 150, other_level = "Other"),
+    Application_mode = fct_lump_min(Application_mode, min = 150, other_level = "Other"),
+    Mother_s_occupation = fct_lump_min(Mother_s_occupation, min = 150, other_level = "Other"),
+    Father_s_occupation = fct_lump_min(Father_s_occupation, min = 150, other_level = "Other"),
+    Marital_status = fct_lump_min(Marital_status, min = 150, other_level = "Other")
   )
 ```
 
@@ -159,7 +155,7 @@ model_nul <- glm(target ~ 1, data = base, family = binomial(link = "logit"))
 
 ```{r}
 anova(model_complet, test = "LR")
-anova(model_complet,model_nul, test = "Chisq")
+anova(model_complet,model_nul, test="Chisq")
 ```
 
 ## 5. Construcció del primer model
@@ -181,16 +177,18 @@ m0.1 <- glm(target ~
                  Unemployment_rate,
                data = base,
                family = binomial(link = "logit"))
+```
 
+```{r}
 anova(model_complet, m0.1, test = "Chisq")
 ```
 
 ```{r}
-m0.2 <- step(model_complet, direction = "both", trace = FALSE)
+m0.2 <- step(model_complet, direction = "backward", trace = FALSE)
 ```
 
 ```{r}
-anova(model_complet,m0.1, m0.2, test = "Chisq")
+anova(m0.1, m0.2, test = "Chisq")
 AIC(model_complet, m0.1, m0.2)
 BIC(model_complet, m0.1, m0.2)
 ```
@@ -219,7 +217,6 @@ num_vars <- c("Age_at_enrollment",
                  "Curricular_units_2nd_sem_approved", 
                  "Unemployment_rate")
 
-# Dibuixa 2x2: tres predictors + predictor lineal
 par(mfrow = c(1,1))
 
 for (v in num_vars) {
@@ -244,7 +241,7 @@ cat_vars <- c("Course",
                  "Tuition_fees_up_to_date",
                  "Scholarship_holder" )
 
-par(mfrow = c(1,1))
+par(mfrow = c(2,2))
 for (v in cat_vars) {
   boxplot(res ~ base[[v]],
           main = paste("Residuals by", v),
@@ -252,6 +249,9 @@ for (v in cat_vars) {
           col = "lightblue", las = 2, cex.axis = 0.7, outline = FALSE)
   abline(h = 0, col = "red", lty = 2)
 }
+```
+```{r}
+influencePlot(m0.1)
 ```
 
 Tot i que gràficament veiem que tenim un model prou bo, intentem millorar-lo:
@@ -356,7 +356,7 @@ El model cúbic (m3.3) ofereix la millor relació AIC/BIC.
 
 Tornem a visualitzar els residus de Pearson per veure la millora
 ```{r}
-par(mfrow = c(1, 1)) 
+par(mfrow = c(1,1)) 
 residualPlot(m1.4, term = "units1", type = "pearson",
              id.n = 0, ylim = c(-3, 3))
 
@@ -403,7 +403,7 @@ BIC(m0.1, m0.3)
 ```
 ## 7. Model amb dues pendents
 
-Per a resoldre la hipòtesi que  la relació entre el nombre d’assignatures aprovades i la probabilitat de dropout no és uniforme a tot el rang de valors, sinó que podria canviar a partir d’un determinat punt.
+Per a resoldre la hipòtesi que la relació entre el nombre d’assignatures aprovades i la probabilitat de dropout no és uniforme a tot el rang de valors, sinó que podria canviar a partir d’un determinat punt.
 
 Dividim en dos trams les dues variables:cada contínua en dos trams (≤5 vs >5; ≤4 vs >4) i en fas factors binaris.
 ```{r}
@@ -434,7 +434,6 @@ summary(m0.5)
 ```
 
 ```{r}
-anova(m0.3, m0.5, test = "Chisq") 
 BIC(m0.1, m0.3, m0.5) 
 AIC(m0.1, m0.3, m0.5)
 ```
@@ -451,12 +450,14 @@ m_probit <- glm(target ~
               Tuition_fees_up_to_date + 
               Scholarship_holder + 
               Age_at_enrollment + 
-              poly(Curricular_units_1st_sem_approved, 4) + 
+              Curricular_units_1st_sem_approved + 
               Curricular_units_2nd_sem_enrolled + 
-              poly(Curricular_units_2nd_sem_approved, 3) + 
+              Curricular_units_2nd_sem_approved + 
               Unemployment_rate,
             data = base,
             family = binomial(link = "probit"))
+
+anova(m0.1, m_probit, test = "Chisq")
 
 # Comparació AIC/BIC
 AIC(m0.1, m_probit)
@@ -466,9 +467,7 @@ No millora amb el link probit, mantenim el model m0.1
 
 ## 9. Corba ROC
 ```{r}
-install.packages("ROCR")
-library(ROCR)
-p_hat <- predict(m0.3, newdata = base, type = "response")
+p_hat <- predict(m0.1, newdata = base, type = "response")
 
 pred <- prediction(p_hat, base$target)
 perf <- performance(pred, "tpr", "fpr")  # TPR vs FPR = ROC
