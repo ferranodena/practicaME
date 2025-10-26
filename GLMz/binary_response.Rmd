@@ -112,6 +112,9 @@ anova(model_complet, test = "Chisq")
 Com que a l'executar el test Òmnibus del model complet, ens surt l'advertiment "Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred", això pot indicar separació o quasiseparació en les nostres dades. L'intentarem diagnosticar fent ús de la llibreria detectseparation
 
 ```{r}
+install.packages("detectseparation") 
+library(detectseparation)
+
 X <- model.matrix(target ~ ., data = base)
 
 y <- base$target
@@ -435,7 +438,7 @@ anova(m0.3, m0.5, test = "Chisq")
 BIC(m0.1, m0.3, m0.5) 
 AIC(m0.1, m0.3, m0.5)
 ```
-No hi ha cap millora substancial com per justificar aquests canvis, ens quedem amb el m0.3
+No hi ha cap millora substancial com per justificar aquests canvis, ens quedem amb el m0.1
 
 ## 8. Altres links
 ```{r}
@@ -456,10 +459,10 @@ m_probit <- glm(target ~
             family = binomial(link = "probit"))
 
 # Comparació AIC/BIC
-AIC(m0.3, m_probit)
-BIC(m0.3, m_probit)
+AIC(m0.1, m_probit)
+BIC(m0.1, m_probit)
 ```
-No millora amb el link probit, mantenim el model m0.3
+No millora amb el link probit, mantenim el model m0.1
 
 ## 9. Corba ROC
 ```{r}
