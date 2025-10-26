@@ -96,13 +96,6 @@ if ("Target" %in% names(base)) {
 ```
 
 
-Agrupem, de totes les variables categòriques, nivells amb menys de 50 observacions dins la categoria “Other”.
-
-```{r}
-base <- base %>%
-  mutate(across(where(is.factor), ~ fct_lump_min(.x, min = 25, other_level = "Other")))
-```
-  
 ## 3. Model complet i model nul
 
 ```{r}
@@ -114,26 +107,372 @@ model_nul <- glm(target ~ 1, data = base, family = binomial(link = "logit"))
 anova(model_complet, test = "Chisq")
 ```
 
-## 4. Construcció del primer model
+## 4. Diagnostiquem separació o quasiseparació
+
+Com que a l'executar el test Òmnibus del model complet, ens surt l'advertiment "Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred", això pot indicar separació o quasiseparació en les nostres dades. L'intentarem diagnosticar fent ús de la llibreria detectseparation
+
+```{r}
+X <- model.matrix(target ~ ., data = base)
+
+y <- base$target
+
+det <- detect_separation(X, y, family = binomial())
+
+det
+```
+
+Els resultats ens indiquen que SÍ hi ha separació o quasiseparació en les nostres dades, i ens surt en variables amb categories amb pocs valors (com poden ser qualificacions o oficis concrets). Els agrupem en una única categoria "Other" utilitzant la funció fct_lump_min() de la llbireria forcats, per veure aviam si així ho solucionem. Unirem aquelles amb menys de 50 observacions.
+
+```{r}
+base <- base %>%
+  mutate(
+    Application_mode = fct_lump_min(Application_mode, min = 50, other_level = "Other"),
+    Course = fct_lump_min(Course, min = 50, other_level = "Other"),
+    Previous_qualification = fct_lump_min(Previous_qualification, min = 50, other_level = "Other"),
+    Nacionality = fct_lump_min(Nacionality, min = 50, other_level = "Other"),
+    Mother_s_occupation = fct_lump_min(Mother_s_occupation, min = 50, other_level = "Other"),
+    Father_s_occupation = fct_lump_min(Father_s_occupation, min = 50, other_level = "Other"),
+    Marital_status = fct_lump_min(Marital_status, min = 50, other_level = "Other")
+  )
+```
+
+Tornem a executar el diagnòstic de separació
+```{r}
+X <- model.matrix(target ~ ., data = base)
+
+y <- base$target
+
+det <- detect_separation(X, y, family = binomial())
+
+det
+```
+
+Ja no tenim ni separació ni quasiseparació, per tant, procedim.
+
+```{r}
+model_complet <- glm(target ~ ., data = base, family = binomial(link = "logit"))
+model_nul <- glm(target ~ 1, data = base, family = binomial(link = "logit"))
+```
+
+```{r}
+anova(model_complet, test = "LR")
+anova(model_complet,model_nul, test = "Chisq")
+```
+
+## 5. Construcció del primer model
 
 El construïm a partir de les més explicatves
 ```{r}
-m0.1 <- glm(
-  target ~ Application_mode +
-           Course +
-           Mother_s_occupation +
-           Debtor +
-           Tuition_fees_up_to_date +
-           Gender +
-           Scholarship_holder +
-           Age_at_enrollment +
-           Curricular_units_1st_sem_evaluations +
-           Curricular_units_1st_sem_approved +
-           Curricular_units_2nd_sem_approved,
-  data = base,
-  family = binomial(),
-)
-anova(m0.1, model_complet, test = "Chisq")
-AIC(model_complet, m0.1)
-BIC(model_complet, m0.1)
+m0.1 <- glm(target ~ 
+                 Course + 
+                 Application_mode + 
+                 Mother_s_qualification + 
+                 Father_s_occupation + 
+                 Debtor + 
+                 Tuition_fees_up_to_date + 
+                 Scholarship_holder + 
+                 Age_at_enrollment + 
+                 Curricular_units_1st_sem_approved + 
+                 Curricular_units_2nd_sem_enrolled + 
+                 Curricular_units_2nd_sem_approved + 
+                 Unemployment_rate,
+               data = base,
+               family = binomial(link = "logit"))
+
+anova(model_complet, m0.1, test = "Chisq")
+```
+
+```{r}
+m0.2 <- step(model_complet, direction = "both", trace = FALSE)
+```
+
+```{r}
+anova(model_complet,m0.1, m0.2, test = "Chisq")
+AIC(model_complet, m0.1, m0.2)
+BIC(model_complet, m0.1, m0.2)
+```
+
+Escollirem el model m0.1 perquè, tenint en compte el compromís ajust-complexitat, és preferible al model m0.2 ja que la millora en l'ajust no ens val tant la pena degut a l'augment de la complexitat.
+
+## 6. Validació del model
+
+Generem gràfics de residus, tant per les variables categòriques com per les numèriques:
+
+```{r}
+res <- resid(m0.1, type = "pearson")
+```
+
+```{r}
+# 1) Residus vs ajustats
+par(mfrow = c(1,1))
+residualPlots(m0.1, terms = ~ 1, type = "pearson", fitted = TRUE)
+abline(h = 0, col = "red", lty = 2)
+```
+
+```{r}
+num_vars <- c("Age_at_enrollment", 
+                 "Curricular_units_1st_sem_approved", 
+                 "Curricular_units_2nd_sem_enrolled",
+                 "Curricular_units_2nd_sem_approved", 
+                 "Unemployment_rate")
+
+# Dibuixa 2x2: tres predictors + predictor lineal
+par(mfrow = c(1,1))
+
+for (v in num_vars) {
+  x <- base[[v]]
+  plot(x, res,
+       xlab = v, ylab = "Pearson residuals",
+       pch = 1, col = "#00000060",
+       main = paste("Residuals vs", v))
+  abline(h = 0, col = "grey50", lty = 2)
+  lines(lowess(x, res), col = "magenta", lwd = 2)
+}
+
+```
+
+```{r}
+# 3) Boxplots per a predictors categòrics del model
+cat_vars <- c("Course",
+                 "Application_mode", 
+                 "Mother_s_qualification", 
+                 "Father_s_occupation", 
+                 "Debtor",
+                 "Tuition_fees_up_to_date",
+                 "Scholarship_holder" )
+
+par(mfrow = c(1,1))
+for (v in cat_vars) {
+  boxplot(res ~ base[[v]],
+          main = paste("Residuals by", v),
+          xlab = v, ylab = "Pearson residuals",
+          col = "lightblue", las = 2, cex.axis = 0.7, outline = FALSE)
+  abline(h = 0, col = "red", lty = 2)
+}
+```
+
+Tot i que gràficament veiem que tenim un model prou bo, intentem millorar-lo:
+
+Per cada variable s’ha creat una base de dades agregada (df1, df2, df3), on s’han agrupat les observacions segons el valor de la variable contínua corresponent. L’objectiu és obtenir, per a cada valor possible de la variable, el nombre d’alumnes que han abandonat (ypos) i els que no han abandonat (yneg)
+
+### 6.1 Per a la variable Curricular_units_1st_sem_approved
+
+```{r}
+df1 <- with(base, aggregate(
+  x = cbind(ypos = target, yneg = 1 - target),
+  by = list(units1 = Curricular_units_1st_sem_approved),
+  FUN = sum
+))
+m1 <- glm(cbind(ypos, yneg) ~ units1, data = df1, family = binomial(link="logit"))
+summary(m1)
+residualPlots(m1, main = "Aggregated: units1")
+```
+
+```{r}
+#variable continua 1  Curricular_units_1st_sem_approved (df1 / units1)
+m1.1 <- glm(cbind(ypos,yneg) ~ units1,           data = df1, family = binomial)
+m1.2 <- glm(cbind(ypos,yneg) ~ poly(units1, 2),  data = df1, family = binomial)
+m1.3 <- glm(cbind(ypos,yneg) ~ poly(units1, 3),  data = df1, family = binomial)
+m1.4 <- glm(cbind(ypos,yneg) ~ poly(units1, 4),  data = df1, family = binomial)
+
+#Deviance test
+anova(m1.1, m1.2, test = "Chisq")
+anova(m1.2, m1.3, test = "Chisq")
+anova(m1.3, m1.4, test = "Chisq")
+
+#AIC/BIC
+cbind(AIC(m1.1, m1.2, m1.3, m1.4),
+      BIC = BIC(m1.1, m1.2, m1.3, m1.4)[,2])
+```
+
+El model polinòmic d’ordre 4 (m1.4) és el que presenta millor ajust.
+
+
+### 6.2 Per a la variable Curricular_units_2nd_sem_enrolled
+
+```{r}
+df2 <- with(base, aggregate(
+  x = cbind(ypos = target, yneg = 1 - target),
+  by = list(units2e = Curricular_units_2nd_sem_enrolled),
+  FUN = sum
+))
+m2 <- glm(cbind(ypos, yneg) ~ units2e, data = df2, family = binomial(link="logit"))
+summary(m2)
+residualPlots(m2, main = "Aggregated: units2e")
+
+```
+
+```{r}
+m2.1 <- glm(cbind(ypos,yneg) ~ units2e,          data = df2, family = binomial)
+m2.2 <- glm(cbind(ypos,yneg) ~ poly(units2e, 2), data = df2, family = binomial)
+m2.3 <- glm(cbind(ypos,yneg) ~ poly(units2e, 3), data = df2, family = binomial)
+m2.4 <- glm(cbind(ypos,yneg) ~ poly(units2e, 4), data = df2, family = binomial)
+
+#Deviance test
+anova(m2.1, m2.2, test = "Chisq")
+anova(m2.2, m2.3, test = "Chisq")
+anova(m2.3, m2.4, test = "Chisq")
+
+#AIC/BIC
+cbind(AIC(m2.1, m2.2, m2.3, m2.4),
+      BIC = BIC(m2.1, m2.2, m2.3, m2.4)[,2])
+```
+El model d’ordre 3 (m2.3) millora lleugerament l’ajust respecte als models lineals o quadràtics.
+
+### 6.3 Per a la variable Curricular_units_2nd_sem_approved
+
+```{r}
+df3 <- with(base, aggregate(
+  x = cbind(ypos = target, yneg = 1 - target),
+  by = list(units2a = Curricular_units_2nd_sem_approved),
+  FUN = sum
+))
+m3 <- glm(cbind(ypos, yneg) ~ units2a, data = df3, family = binomial(link="logit"))
+summary(m3)
+residualPlots(m3, main = "Aggregated: units2a")
+```
+
+```{r}
+#variable continua 3  Curricular_units_2nd_sem_approved (df3 / units2a)
+m3.1 <- glm(cbind(ypos,yneg) ~ units2a,          data = df3, family = binomial)
+m3.2 <- glm(cbind(ypos,yneg) ~ poly(units2a, 2), data = df3, family = binomial)
+m3.3 <- glm(cbind(ypos,yneg) ~ poly(units2a, 3), data = df3, family = binomial)
+m3.4 <- glm(cbind(ypos,yneg) ~ poly(units2a, 4), data = df3, family = binomial)
+
+#Deviance test
+anova(m3.1, m3.2, test = "Chisq")
+anova(m3.2, m3.3, test = "Chisq")
+anova(m3.3, m3.4, test = "Chisq")
+
+#AIC/BIC
+cbind(AIC(m3.1, m3.2, m3.3, m3.4),
+      BIC = BIC(m3.1, m3.2, m3.3, m3.4)[,2])
+```
+El model cúbic (m3.3) ofereix la millor relació AIC/BIC.
+
+
+Tornem a visualitzar els residus de Pearson per veure la millora
+```{r}
+par(mfrow = c(1, 1)) 
+residualPlot(m1.4, term = "units1", type = "pearson",
+             id.n = 0, ylim = c(-3, 3))
+
+residualPlot(m2.3, term = "units1", type = "pearson",
+             id.n = 0, ylim = c(-3, 3))
+
+residualPlot(m3.3, term = "units1", type = "pearson",
+             id.n = 0, ylim = c(-3, 3))
+```
+
+
+En seleccionem els polinomis que millor descriuen aquesta relació:
+un polinomi d’ordre 4 per a Curricular_units_1st_sem_approved
+un polinomi d’ordre 3 per a Curricular_units_2nd_sem_approved.
+
+Per tant, generem un nou model m0.3
+```{r}
+m0.3 <- glm(target ~ 
+              Course + 
+              Mother_s_qualification + 
+              Father_s_occupation + 
+              Debtor + 
+              Tuition_fees_up_to_date + 
+              Scholarship_holder + 
+              Age_at_enrollment + 
+              poly(Curricular_units_1st_sem_approved, 4) + 
+              Curricular_units_2nd_sem_enrolled + 
+              poly(Curricular_units_2nd_sem_approved, 3) + 
+              Unemployment_rate,
+            data = base,
+            family = binomial(link = "logit"))
+```
+
+Visualitzem els residus de Pearson
+```{r}
+par(mfrow = c(1, 1)) 
+residualPlots(m0.3, ~ 1, type = "pearson") 
+```
+Comparació entre m0.1 i m0.3
+```{r}
+anova(m0.1, m0.3, test = "Chisq")
+AIC(m0.1, m0.3)
+BIC(m0.1, m0.3)
+```
+## 7. Model amb dues pendents
+
+Per a resoldre la hipòtesi que  la relació entre el nombre d’assignatures aprovades i la probabilitat de dropout no és uniforme a tot el rang de valors, sinó que podria canviar a partir d’un determinat punt.
+
+Dividim en dos trams les dues variables:cada contínua en dos trams (≤5 vs >5; ≤4 vs >4) i en fas factors binaris.
+```{r}
+base$Iunits1 <- as.factor(ifelse(base$Curricular_units_1st_sem_approved <= 5, 0, 1)) 
+base$Iunits2a <- as.factor(ifelse(base$Curricular_units_2nd_sem_approved <= 4, 0, 1))
+```
+
+Comrpovem que tenim suficients valors a cada banda
+```{r}
+summary(base$Iunits1) 
+summary(base$Iunits2a)
+```
+
+```{r}
+m0.5 <- glm( target ~ Course + 
+               Mother_s_qualification + 
+               Father_s_occupation + 
+               Debtor + 
+               Tuition_fees_up_to_date + 
+               Scholarship_holder + 
+               Age_at_enrollment + 
+               poly(Curricular_units_1st_sem_approved, 4) * Iunits1 +
+               poly(Curricular_units_2nd_sem_approved, 3) * Iunits2a + 
+               Unemployment_rate, 
+             data = base, 
+             family = binomial(link = "logit"))
+summary(m0.5) 
+```
+
+```{r}
+anova(m0.3, m0.5, test = "Chisq") 
+BIC(m0.1, m0.3, m0.5) 
+AIC(m0.1, m0.3, m0.5)
+```
+No hi ha cap millora substancial com per justificar aquests canvis, ens quedem amb el m0.3
+
+## 8. Altres links
+```{r}
+# Comparació de diferent link
+m_probit <- glm(target ~ 
+              Course + 
+              Mother_s_qualification + 
+              Father_s_occupation + 
+              Debtor + 
+              Tuition_fees_up_to_date + 
+              Scholarship_holder + 
+              Age_at_enrollment + 
+              poly(Curricular_units_1st_sem_approved, 4) + 
+              Curricular_units_2nd_sem_enrolled + 
+              poly(Curricular_units_2nd_sem_approved, 3) + 
+              Unemployment_rate,
+            data = base,
+            family = binomial(link = "probit"))
+
+# Comparació AIC/BIC
+AIC(m0.3, m_probit)
+BIC(m0.3, m_probit)
+```
+No millora amb el link probit, mantenim el model m0.3
+
+## 9. Corba ROC
+```{r}
+install.packages("ROCR")
+library(ROCR)
+p_hat <- predict(m0.3, newdata = base, type = "response")
+
+pred <- prediction(p_hat, base$target)
+perf <- performance(pred, "tpr", "fpr")  # TPR vs FPR = ROC
+plot(perf, col = "#d62728", lwd = 2, main = "ROC - best_mod (ROCR)")
+abline(0, 1, lty = 2, col = "grey50")
+
+auc_perf <- performance(pred, "auc")
+auc_value <- as.numeric(auc_perf@y.values)
+auc_value
 ```

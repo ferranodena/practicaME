@@ -7,9 +7,10 @@ library(multcompView)  # funcio cld
 library(dplyr)         # manipulació de dades
 library(forcats)
 library(readr)
+library(detectseparation)
 
 #Llegir dades  -------------------------------------------------------------------
-base <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
+base <- read_csv("./clean-data.csv", col_types = cols(
   Marital_status = col_character(),
   Application_mode = col_character(),
   Application_order = col_integer(),
@@ -85,9 +86,41 @@ for (v in vars) {
 
 if ("Target" %in% names(base)) base <- dplyr::select(base, -Target)
 
-# Abans del model, després d’haver eliminat Target
+# Detecció i correcció de problemes de separació en el model
+#--------------------------------------------------------------
+
+# Abans de continuar amb l’ajust del model complet,
+# comprovem si existeix separació completa o quasi completa,
+# és a dir, si hi ha variables o categories que prediuen perfectament
+# la resposta (probabilitat 0 o 1 de dropout).
+# Això pot provocar l’advertiment: "fitted probabilities numerically 0 or 1 occurred"
+
+# Construïm la matriu de disseny amb totes les variables explicatives
+# (equivalent a les columnes de X del model lineal general)
+X <- model.matrix(target ~ ., data = base)
+
+# Extraiem la variable resposta (0 = no dropout, 1 = dropout)
+y <- base$target
+
+# Apliquem la funció detect_separation per comprovar si hi ha separació
+det <- detect_separation(X, y, family = binomial())
+
+# Mostrem el resultat principal
+det
+
+# Reagrupem categories amb poques observacions per reduir el risc de separació
+# Utilitzem fct_lump_min() per unir nivells amb menys de 150 observacions
+# en una sola categoria "Other". Això redueix la complexitat del model
+# i evita que alguns nivells expliquin perfectament la resposta.
 base <- base %>%
-  mutate(across(where(is.factor), ~ fct_lump_min(.x, min = 100, other_level = "Other")))
+  mutate(
+    Application_mode = fct_lump_min(Application_mode, min = 50, other_level = "Other"),
+    Course = fct_lump_min(Course, min = 50, other_level = "Other"),
+    Previous_qualification = fct_lump_min(Previous_qualification, min = 50, other_level = "Other"),
+    Nacionality = fct_lump_min(Nacionality, min = 50, other_level = "Other"),
+    Mother_s_occupation = fct_lump_min(Mother_s_occupation, min = 50, other_level = "Other"),
+    Father_s_occupation = fct_lump_min(Father_s_occupation, min = 50, other_level = "Other")
+  )
 
 # Ara el full model
 m0 <- glm(target ~ ., data = base, family = binomial(link = "logit"))
@@ -98,29 +131,22 @@ anova(m0, test = "Chisq")
 # Contribució de cada variable al model complet
 Anova(m0, test.statistic = "LR")
 
-
-#creem un model reduït amb les variables significatives, *** ** i *
-m0.1 <- glm(target ~ Course + Application_mode + Mother_s_qualification + 
-                      Father_s_occupation + Debtor + Tuition_fees_up_to_date + 
-                      Gender + Scholarship_holder + Age_at_enrollment + 
-                      Curricular_units_1st_sem_approved + 
-                      Curricular_units_2nd_sem_enrolled + 
-                      Curricular_units_2nd_sem_approved + 
-                      Unemployment_rate,
-            data = base, family = binomial(link = "logit"))
-
-
-
-summary(m0.1)
-
-#Comparem AIC/BIC amb el model complet (m0) per veure si ha empitjorat molt i
-#cal recuperar alguna variable
-
-AIC(m0, m0.1)
-BIC(m0, m0.1)
-
-#Contribució de cada variable al model reduït
-Anova(m0.1, test.statistic = 'LR')  
+# Model 0.1 amb les variables significatives del model 0.0.1 segons LR
+m0.1 <- glm(target ~ 
+                 Course + 
+                 Application_mode + 
+                 Mother_s_qualification + 
+                 Father_s_occupation + 
+                 Debtor + 
+                 Tuition_fees_up_to_date + 
+                 Scholarship_holder + 
+                 Age_at_enrollment + 
+                 Curricular_units_1st_sem_approved + 
+                 Curricular_units_2nd_sem_enrolled + 
+                 Curricular_units_2nd_sem_approved + 
+                 Unemployment_rate,
+               data = base,
+               family = binomial(link = "logit"))
 
 #Fem una selecció automàtica cap endavant i cap enrere a partir del model complet
 #utilitzant el criteri BIC
@@ -132,11 +158,6 @@ summary(m0.2)
 AIC(m0, m0.1, m0.2)
 BIC(m0, m0.1, m0.2)
 
-#m0 (complet): 72 df, AIC = 1484.7, BIC = 1905.0
-
-#m0.1 (reduït manual): 42 df, AIC = 1468.4, BIC = 1713.6
-
-#m0.2 (reduït automàtic): 9 df, AIC = 1490.9, BIC = 1534.9
 
 #Mirem si les variables adicionales del model m0.1 aporten informació addicional
 #en comparació amb el model m0.2
@@ -149,17 +170,6 @@ anova(m0.2, m0.1, test = "Chisq")
 #Diagnòstic del model final ------------------------------------------------------
 par(mfrow = c(1, 1)) # finestra 1x1
 residualPlots(m0.1, ~ 1, type = "pearson") #residus vs ajustats
-
-
-
-#residus vs variables explicatives
-par(mfrow = c(4, 4)) 
-residualPlots(m0.1, 
-              ~ Age_at_enrollment + Curricular_units_1st_sem_approved +
-                Curricular_units_2nd_sem_enrolled + 
-                Curricular_units_2nd_sem_approved + 
-                Unemployment_rate,
-               tests = TRUE)
 
 #residus vs factors
 residualPlots(m0.1,tests = TRUE)
@@ -176,7 +186,7 @@ cat_vars <- c("Course", "Application_mode", "Mother_s_qualification",
               "Gender", "Scholarship_holder")
 
 # Bucle per fer boxplots nets per cada categòrica
-par(mfrow = c(3,3))  
+par(mfrow = c(1,1))  
 for (v in cat_vars) {
   boxplot(res ~ base[[v]], 
           main = paste("Residuals vs", v),
@@ -184,7 +194,6 @@ for (v in cat_vars) {
           col = "lightblue", las = 2, cex.axis = 0.7)
   abline(h = 0, col = "red", lty = 2)
 }
-par(mfrow = c(1,1))  
 
 
 #millora de la relació amb les variables numèriques mitjançant polinomis
@@ -261,11 +270,6 @@ anova(m3.3, m3.4, test = "Chisq")
 cbind(AIC(m3.1, m3.2, m3.3, m3.4),
       BIC = BIC(m3.1, m3.2, m3.3, m3.4)[,2])
 
-par(mfrow = c(4, 4)) 
-residualPlots(m1.4, layout = c(1, 2))
-residualPlots(m2.3, layout = c(1, 2))
-residualPlots(m3.3, layout = c(1, 2))
-
 
 par(mfrow = c(4, 4)) 
 residualPlot(m1.4, term = "units1", type = "pearson",
@@ -278,14 +282,21 @@ residualPlot(m3.3, term = "units1", type = "pearson",
              id.n = 0, ylim = c(-3, 3))
 
 #Actualitzem el model m0.1 amb els polinomis adequats
-m0.3 <- glm(target ~ Course + Application_mode + Mother_s_qualification + 
-                      Father_s_occupation + Debtor + Tuition_fees_up_to_date +
-                      Gender + Scholarship_holder + Age_at_enrollment + 
-                      poly(Curricular_units_1st_sem_approved, 4) + 
-                      Curricular_units_2nd_sem_enrolled + 
-                      poly(Curricular_units_2nd_sem_approved, 3) + 
-                      Unemployment_rate,
-            data = base, family = binomial(link = "logit"))
+m0.3 <- glm(target ~ 
+              Course + 
+              Mother_s_qualification + 
+              Father_s_occupation + 
+              Debtor + 
+              Tuition_fees_up_to_date + 
+              Scholarship_holder + 
+              Age_at_enrollment + 
+              poly(Curricular_units_1st_sem_approved, 4) + 
+              Curricular_units_2nd_sem_enrolled + 
+              poly(Curricular_units_2nd_sem_approved, 3) + 
+              Unemployment_rate,
+            data = base,
+            family = binomial(link = "logit"))
+
 
 summary(m0.3)
 #Diagnòstic del model final amb polinomis ------------------------------------------------------
@@ -326,28 +337,25 @@ base$Iunits1 <- as.factor(ifelse(base$Curricular_units_1st_sem_approved <= 5, 0,
 base$Iunits2a <- as.factor(ifelse(base$Curricular_units_2nd_sem_approved <= 4, 0, 1))
 summary(base$Iunits1) 
 summary(base$Iunits2a)
-m0.5 <- glm( target ~ Course + Application_mode + Mother_s_qualification + Father_s_occupation + Debtor + Tuition_fees_up_to_date + Gender + Scholarship_holder + Age_at_enrollment + poly(Curricular_units_1st_sem_approved, 4) * Iunits1 + poly(Curricular_units_2nd_sem_approved, 3) * Iunits2a + Unemployment_rate, data = base, family = binomial(link = "logit"))
+m0.5 <- glm( target ~ Course + Mother_s_qualification + Father_s_occupation + Debtor + Tuition_fees_up_to_date + Scholarship_holder + Age_at_enrollment + poly(Curricular_units_1st_sem_approved, 4) * Iunits1 + poly(Curricular_units_2nd_sem_approved, 3) * Iunits2a + Unemployment_rate, data = base, family = binomial(link = "logit"))
 summary(m0.5) 
 anova(m0.3, m0.5, test = "Chisq") 
 BIC(m0.1, m0.3, m0.5) 
 AIC(m0.1, m0.3, m0.5)
 
-plot(allEffects(m0.5))
-
-
 # Comparació de diferent link
-m_logit  <- glm(target ~ Course + Application_mode + Mother_s_qualification + 
-                  Father_s_occupation + Debtor + Tuition_fees_up_to_date +
-                  Gender + Scholarship_holder + Age_at_enrollment + 
+m_logit  <- glm(target ~ Course + Mother_s_qualification + 
+                  Father_s_occupation + Debtor + Tuition_fees_up_to_date 
+                   + Scholarship_holder + Age_at_enrollment + 
                   Curricular_units_1st_sem_approved + 
                   Curricular_units_2nd_sem_enrolled + 
                   Curricular_units_2nd_sem_approved + 
                   Unemployment_rate,
                 data = base, family = binomial(link = "logit"))
 
-m_probit <- glm(target ~ Course + Application_mode + Mother_s_qualification + 
+m_probit <- glm(target ~ Course  + Mother_s_qualification + 
                   Father_s_occupation + Debtor + Tuition_fees_up_to_date +
-                  Gender + Scholarship_holder + Age_at_enrollment + 
+                  Scholarship_holder + Age_at_enrollment + 
                   Curricular_units_1st_sem_approved + 
                   Curricular_units_2nd_sem_enrolled + 
                   Curricular_units_2nd_sem_approved + 
