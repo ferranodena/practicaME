@@ -2,7 +2,7 @@
   /* Estils globals del document */
   body {
     font-family: Helvetica, Arial, sans-serif; /* Font Helvètica amb alternatives */
-    font-size: 11pt; /* Reduït de la mida per defecte */
+    font-size: 13pt; /* Reduït de la mida per defecte */
     text-align: justify; /* Text justificat */
     line-height: 1.4; /* Millor llegibilitat */
   }
@@ -48,7 +48,7 @@
   .image-column {
     flex: 1 1 0; /* Permet que es distribueixin equitativament */
     min-width: 300px; /* Amplada mínima */
-    max-width: 500px; /* Amplada màxima per defecte (múltiples imatges) */
+    max-width: 400px; /* Amplada màxima per defecte (múltiples imatges) */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -135,8 +135,8 @@
 - [INFORME D4](#informe-d4)
   - [0. Taula de continguts](#0-taula-de-continguts)
   - [1. Introducció](#1-introducció)
-  - [2. Dades del problema (D2)](#2-dades-del-problema-d2)
-  - [3. Pla de treball (D3)](#3-pla-de-treball-d3)
+  - [2. Dades del problema](#2-dades-del-problema)
+  - [3. Pla de treball](#3-pla-de-treball)
   - [4. Objectius i metodologia](#4-objectius-i-metodologia)
   - [5. Preprocessament de les dades](#5-preprocessament-de-les-dades)
   - [6. Anàlisi exploratori](#6-anàlisi-exploratori)
@@ -153,16 +153,77 @@
       - [8.4.3 Link probit](#843-link-probit)
       - [8.5 Corba ROC i AUC](#85-corba-roc-i-auc)
   - [9. Sèries temporals](#9-sèries-temporals)
+    - [9.1 Introducció](#91-introducció)
+    - [9.2 Anàlisi exploratori](#92-anàlisi-exploratori)
+    - [9.3 Transformacions](#93-transformacions)
+      - [9.3.1 Canvi d'escala](#931-canvi-descala)
+      - [9.3.2 Diferència estacional](#932-diferència-estacional)
 
 <div class="page-break"></div>
 
 ## 1. Introducció
 
-## 2. Dades del problema (D2)
+En aquest projecte, hem decidit treballar amb la base de dades *Predict Students’ Dropout and Academic Success*, perquè volem aprofundir en l’abandonament i l’èxit acadèmic a la universitat, un tema que considerem d’especial interès, no només pel fet que ens toca de ben a prop, sinó també, perquè tenint en compte les pautes d’aquest projecte, aconseguirem un model que ens pugui predir, de manera força fiable, quin perfil d’estudiant hauria de deixar o acabar una carrera universitària. Aquest aspecte del treball és el que més ens ha motivat a escollir aquest perfil de dataset. En concret, aquest dataset està format per més de 4000 registres d’estudiants universitaris i prop de quaranta variables demogràfiques, socials i acadèmiques. Totes aquestes variables són les que ens permeten poder portar a terme el projecte que tenim al cap, ja que és cert que el tema ens interessa, però també havíem de trobar un dataset que seguis els requisits necessaris per poder fer aquest treball.
 
-## 3. Pla de treball (D3)
+Ens interessa especialment la riquesa de la informació disponible, pel fet que tenim accés a dades que a priori poden semblar molt poc rellevant, però que potser, posteriorment acabem trobant una correlació molt més forta de la que ens esperaríem inicialment. Això és un aspecte molt positiu sobre les variables que ens hi podem trobar en el dataset. L’altra cara de la moneda podria ser que ens podem trobar en una situació que ens passi just el contrari. Donem per fet que la importància de certs factors alhora d’un bon rendiment acadèmic, com per exemple les hores de son diàries d’un estudiant, però realment podem dir per estadística que aquest és el cas? Doncs aquestes qüestions són les que creiem que podem resoldre en aquest treball.
+
+<div class="page-break"></div>
+
+## 2. Dades del problema
+
+Les dades provenen del repositori públic UCI Machine Learning Repository, un lloc molt conegut per compartir conjunts de dades per a pràctiques i investigació en aprenentatge automàtic. El nom del nostre dataset és: *Predict Students' Dropout and Academic Success*. Aquest dataset l’hem extret de: [enllaç](https://archive.ics.uci.edu/dataset/697/predict+students+dropout+and+academic+success)
+El fitxer conté informació de 4.424 estudiants d’una universitat portuguesa i s’utilitza per estudiar quins factors influeixen en el fet que un alumne continuï, abandoni o tingui èxit en els seus estudis. Per obtenir les dades es descarrega un fitxer que ens proporciona la pàgina web, la dataset.
+Aquesta és la versió original o “en brut”. Quan es llegeix aquest arxiu, gairebé totes les variables surten com a numèriques encara que no ho siguin, perquè algunes són codis de categories. També hi ha valors amb coma decimal (per exemple en notes o índexs econòmics), que poden donar problemes en programes que només entenen el punt com a separador decimal. La informació hi és tota, però no és fàcil d’interpretar directament sense un pas de neteja. Tenint en compte tots aquest detalls, i sense deixar enrere el fet del valors nuls, sabem que haurem de fer una dataset “netejada” amb tots aquest detalls modificats de manera que ens faciliti la feina alhora de poder-la usar.
+
+El conjunt de dades original té un total de 4.424 registres, una mida que és més que ¡suficient per treballar-hi ja que supera de llarg els 500 recomanats com a mínim. En relació amb les variables, el dataset en té 37. Quan es carrega tal com està, el programa interpreta 36 d’aquestes columnes com a numèriques i només una com a qualitativa. Ara bé, cal remarcar que aquesta classificació no és del tot correcta: moltes de les columnes que apareixen com a numèriques en realitat són variables categòriques codificades amb números, com ara l’estat civil o el tipus de modalitat d’aplicació.
+Dins d’aquestes variables, es poden identificar vuit columnes que són clarament binàries, és a dir, que només tenen dos valors possibles. Alguns exemples són el gènere, si l’estudiant té beca, si és internacional, si té deutes amb la universitat o si presenta necessitats
+educatives especials. Pel que fa a les variables qualitatives, en la versió original només n’apareix una, però en realitat n’hi ha unes quantes més que es troben codificades com a números i que caldria recodificar perquè es tractin com a categories reals.
+En aquest conjunt de dades no hi ha cap variable de tipus data, de manera que no es pot fer directament una anàlisi de sèries temporals. Si es volgués afegir aquest tipus d’anàlisi, caldria incorporar una columna amb informació temporal, com ara l’any acadèmic o el semestre, o bé utilitzar un altre dataset amb dates.
+Finalment, pel que fa a la qualitat de les dades, el conjunt és complet: no hi ha valors perduts en cap de les variables. Això vol dir que el percentatge de missing és del 0% tant per variable com en el conjunt sencer de la matriu de dades.
+
+<div class="page-break"></div>
+
+## 3. Pla de treball
+
+Ens hem dividit la feina entre aquestes tasques:
+
+1. **Preparació i organització (22/09 - 29/09)**: Preparar l’entorn de treball, assignar rols i  establir estructura de carpetes i repositoris.
+2. **Introducció i Pla (29/09 - 01/10)**: Redactar objectius del projecte, motivació, pla general i identificació de riscos inicials.
+3. **Preprocessament i EDA (01/10 - 17/10)**: Netejar dades, calcular estadístiques descriptives i generar visualitzacions exploratòries.
+4. **Models i sèries temporals (GLMz + TS) (13/10 - 22/10)**: Ajustar models GLM i sèries temporals, validar resultats i interpretar coeficients.
+5. **Redacció i revisió PDF Report (21/10 - 27/10)**: Documentar resultats parcials i figures,revisar coherència i generar PDF provisional.
+6. **Preparar i revisar Presentació (27/10 - 30/10)**: Seleccionar contingut clau, dissenyar diapositives i revisar visualment la presentació final.
+7. **PCA (31/10 - 06/11)**: Dur a terme anàlisi de components principals
+8. **Clustering jeràrquic (04/11 - 10/11)**: Aplicar clustering jeràrquic.
+9. **Clustering particional (10/11 - 14/11)**: Aplicar clustering particional.
+10. **Profiling & tests estadístics (17/11 - 01/12)**: Analitzar distribució de variables i aplicar testsestadístics.
+11. **Redacció final + presentació (01/12 - 16/12)**: Integrar tots els resultats, redactar conclusions, generar PDF final i empaquetar arxius entregables.
+
+També hem establert un risk plan per anticipar possibles problemes i tenir estratègies per mitigar-los. Aquest pla inclou la identificació de riscos, l’avaluació del seu impacte i probabilitat, així com les mesures preventives i correctives que es poden implementar:
+
+|**Risc**                                        |  **Com prevenir**                                                            |  **Com gestionar**|
+|--------------------------------------------|--------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+|Repartiment desigual de la feina            |  Definir responsabilitats clares des del començament                     |  Reassignar tasques en reunions de seguiment|
+|Problemes de gestió del temps               |  Crear un calendari intern amb dies de marge                             |  Prioritzar tasques crítiques i reduir abast si cal|
+|Errors de programari o fitxers malmesos     |  Guardar arxius al núvol amb control de versions (Google Drive, GitHub)  |  Recuperar la darrera còpia de seguretat i redistribuir la feina|
+|Mala interpretació de proves estadístiques  |  Revisar els mètodes estadístics en grup                                 |  Repetir l’anàlisi o consultar el professor|
+|Fallades de comunicació                     |  Utilitzar un sol canal principal de comunicació (grup de WhatsApp)      |  El coordinador (Ferran Òdena) resumeix i comparteix les novetats|
+|Un membre no pot assistir a la presentació  |  Cada diapositiva assignada a almenys dos membres                        |  Un altre membre cobreix la part de la persona absent|
+|Inconsistències d’estil en l’informe        |  Usar una plantilla compartida per a l’escriptura                        |  Assignar un editor per unificar el document final|
+|Conflictes dins l’equip                     |  Establir rols clars i prendre decisions per consens                     |  Demanar mediació al professor|
 
 ## 4. Objectius i metodologia
+
+Els objectius principals que volem assolir amb aquest projecte són els següents:
+
+- Entendre millor el perquè de l’abandonament i l’èxit acadèmic a la universitat, mitjançant les tècniques d’estadística que ens proporciona aquesta assignatura.
+- Descobrir patrons, relacions i diferències entre estudiants buscar com diferentes característiques poden influenciar l’abandonament acadèmic.
+- Practicar i consolidar els nostres coneixements en preprocessament, anàlisi descriptiva i modelització, aplicant conceptes que hem après durant el curs.
+- Fer una proposta que es pugui fer servir per trobar possibles comportaments en l’àmbit educatiu que ens serveixin per abaixar aquestes xifres d'abandonament..
+- En l’àmbit de sèries temporals, volem entendre l’impacte de les dades o actituds anteriors en el comportament d’aquesta mateixa dada en un futur, de manera que poguem predir certes variables.
+
+A l’hora de fer el treball en grup, a l'inici del treball ens vam dividir la feina de manera força equitativa. Però, com estàvem treballant paral·lelament amb parts en les quals les nostres tasques influenciaven directament altres tasques d’altres companys, vam decidir que la millor manera de tenir-ho tot ordenat i disponible en qualsevol moment i per qualsevol membre del grup era fer un repositori de GitHub, amb tots els nostres resultats, codis i conclusions. Això ens ha facilitat la feina d’una manera bastant considerable, i per tant hem pogut treballar de manera eficient i alhora de manera paral·lela en el treball. Aquest repositori està disponible a: [enllaç](https://github.com/ferranodena/practicaME)
+A l'hora de fer els scripts i els gràfics hem fet servir R, i els hem organitzat mitjançant arxius R Markdown, com a les sessions de laboratori, que també hem fet servir com a una referència alhora de fer servir R i de saber com executar i modificar certs models.
 
 ## 5. Preprocessament de les dades
 
@@ -183,11 +244,11 @@ Aquest procés garanteix la coherència i la plausibilitat de les dades, elimina
 
 <div class="image-row">
   <div class="image-column">
-    <img src="./images/admission_grade_abans.png" alt="Gràfic de la variable Admission_grade abans del preprocessament">
+    <img src="./images/mlgz/admission_grade_abans.png" alt="Gràfic de la variable Admission_grade abans del preprocessament">
     <p class="caption">Figura 1: Variable numèrica admisson_grade abans del preprocessament</p>
   </div>
   <div class="image-column">
-    <img src="./images/admission_grade_despres.png" alt="Gràfic de la variable Admission_grade després del preprocessament">
+    <img src="./images/mlgz/admission_grade_despres.png" alt="Gràfic de la variable Admission_grade després del preprocessament">
     <p class="caption">Figura 2: Variable numèrica admisson_grade després del preprocessament</p>
   </div>
 </div>
@@ -224,7 +285,7 @@ El nostre objectiu és modelar i validar un model lineal generalitzat, amb `Admi
 
 <div class="image-row">
   <div class="image-column">
-    <img src="./images/admission_grade_histograma" alt="Histograma de la variable Admisssion_grade">
+    <img src="./images/mlgz/admission_grade_histograma" alt="Histograma de la variable Admisssion_grade">
     <p class="caption">Figura 3: Histograma de la variable Admisssion_grade</p>
   </div>
 </div>
@@ -305,7 +366,7 @@ Per a la validació del nostre model, visualitzem diferents gràfics i els anali
 
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/admission_grade_residus.png" alt="Gràfic de residus vs. valors ajustats">
+      <img src="./images/mlgz/admission_grade_residus.png" alt="Gràfic de residus vs. valors ajustats">
       <p class="caption">Figura 4: Gràfic de residus vs. valors ajustats</p>
       </div>
   </div>
@@ -317,24 +378,24 @@ Per a la validació del nostre model, visualitzem diferents gràfics i els anali
 
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/ad_grade_red1.png" alt="Residus Curricular units 1st sem grade">
+      <img src="./images/mlgz/ad_grade_red1.png" alt="Residus Curricular units 1st sem grade">
       <p class="caption">Figura 5: Residus de Pearson varis</p>
     </div>
 
     <div class="image-column">
-      <img src="./images/ad_grade_red2.png" alt="Residus Curricular units 2nd sem grade">
+      <img src="./images/mlgz/ad_grade_red2.png" alt="Residus Curricular units 2nd sem grade">
       <p class="caption">Figura 6: Residus de Pearson varis</p>
     </div>
   </div>
 
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/ad_grade_red3.png" alt="Residus Unemployment rate">
+      <img src="./images/mlgz/ad_grade_red3.png" alt="Residus Unemployment rate">
       <p class="caption">Figura 7: Residus de Pearson varis</p>
     </div>
 
     <div class="image-column">
-      <img src="./images/ad_grade_red4.png" alt="Residus Application mode">
+      <img src="./images/mlgz/ad_grade_red4.png" alt="Residus Application mode">
       <p class="caption">Figura 8: Residus de Pearson varis</p>
     </div>
   </div>
@@ -351,7 +412,7 @@ Per a la validació del nostre model, visualitzem diferents gràfics i els anali
 
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/ad_grade_influencePlot.png" alt="Influence Plot del model final">
+      <img src="./images/mlgz/ad_grade_influencePlot.png" alt="Influence Plot del model final">
       <p class="caption">Figura 9: Influence Plot del model final</p>
     </div>
   </div>
@@ -376,12 +437,12 @@ Per començar, fem un anàlisi exploratori de la nova variable resposta binària
 
 <div class="image-row">
   <div class="image-column">
-    <img src="./images/binary_analisis1.png" alt="Anàlisi exploratori Target">
+    <img src="./images/mlgz/binary_analisis1.png" alt="Anàlisi exploratori Target">
     <p class="caption">Figura 10: Anàlisi exploratori</p>
   </div>
 
   <div class="image-column">
-    <img src="./images/binary_analisis2.png" alt="Anàlisi exploratori Target">
+    <img src="./images/mlgz/binary_analisis2.png" alt="Anàlisi exploratori Target">
     <p class="caption">Figura 11: Anàlisi exploratori</p>
   </div>
 </div>
@@ -539,7 +600,7 @@ Amb la comanda `residualPlots(m0.1, terms = ~ 1, type = "pearson", fitted = TRUE
 
 <div class="image-row">
     <div class="image-column">
-      <img src="./images/m01_residus.png" alt="Gràfic de residus vs. valors ajustats">
+      <img src="./images/mlgz/m01_residus.png" alt="Gràfic de residus vs. valors ajustats">
       <p class="caption">Figura 12: Gràfic de residus de Pearson vs. valors ajustats</p>
     </div>
 </div>
@@ -551,22 +612,22 @@ Pel que fa als residus per cada predictor, visualitzem els gràfics:
 <div>
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/r1.png" alt="">
+      <img src="./images/mlgz/r1.png" alt="">
       <p class="caption">Figura 13: Residus de Pearson de la variable Age_at_enrollement</p>
     </div>
     <div class="image-column">
-      <img src="./images/r2.png" alt=" ">
+      <img src="./images/mlgz/r2.png" alt=" ">
       <p class="caption">Figura 14: Residus de Pearson de la variable Curricular_units_1st_sem_approved</p>
     </div>
   </div>
 
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/r3.png" alt="">
+      <img src="./images/mlgz/r3.png" alt="">
       <p class="caption">Figura 15: Residus de Pearson de la variable Curricular_units_2nd_sem_enrolled</p>
     </div>
     <div class="image-column">
-      <img src="./images/r4.png" alt="">
+      <img src="./images/mlgz/r4.png" alt="">
       <p class="caption">Figura 16: Residus de Pearson de la variable Curricular_units_2nd_sem_approved</p>
     </div>
 </div>
@@ -577,12 +638,12 @@ Mirem els boxplots de residus per a les variables categòriques:
 
 <div class="image-row">
   <div class="image-column">
-    <img src="./images/rc1.png" alt="Anàlisi exploratori Target">
+    <img src="./images/mlgz/rc1.png" alt="Anàlisi exploratori Target">
     <p class="caption">Figura 17: Residus de Pearson per variables categòriques</p>
   </div>
 
   <div class="image-column">
-    <img src="./images/rc2.png" alt="Anàlisi exploratori Target">
+    <img src="./images/mlgz/rc2.png" alt="Anàlisi exploratori Target">
     <p class="caption">Figura 18: Residus de Pearson per variables categòriques</p>
   </div>
 </div>
@@ -593,7 +654,7 @@ Finalment, utilitzem la funció `influencePlot()` de la llibreria `car` per visu
 
 <div class="image-row">
     <div class="image-column">
-      <img src="./images/m01_influencePlot.png" alt="Influence Plot del model final">
+      <img src="./images/mlgz/m01_influencePlot.png" alt="Influence Plot del model final">
       <p class="caption">Figura 19: Influence Plot del model m0.1</p>
     </div>
 </div>
@@ -634,7 +695,7 @@ Fem això per a les tres variables i analitzem els resultats. Mitjançant els gr
 
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/ag1.png" alt="Gràfic de residus vs. valors ajustats">
+      <img src="./images/mlgz/ag1.png" alt="Gràfic de residus vs. valors ajustats">
       <p class="caption">Figura 20: Gràfic de residus de Pearson vs. valors ajustats</p>
     </div>
   </div>
@@ -693,7 +754,7 @@ Fem això per a les tres variables i analitzem els resultats. Mitjançant els gr
 
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/ag2.png" alt="Gràfic de residus vs. valors ajustats">
+      <img src="./images/mlgz/ag2.png" alt="Gràfic de residus vs. valors ajustats">
       <p class="caption">Figura 21: Gràfic de residus de Pearson vs. valors ajustats</p>
     </div>
   </div>
@@ -752,7 +813,7 @@ Fem això per a les tres variables i analitzem els resultats. Mitjançant els gr
 
   <div class="image-row">
     <div class="image-column">
-      <img src="./images/ag3.png" alt="Gràfic de residus vs. valors ajustats">
+      <img src="./images/mlgz/ag3.png" alt="Gràfic de residus vs. valors ajustats">
       <p class="caption">Figura 22: Gràfic de residus de Pearson vs. valors ajustats</p>
       </div>
   </div>
@@ -813,7 +874,7 @@ Fem això per a les tres variables i analitzem els resultats. Mitjançant els gr
 
   <div class="media-row">
   <div class="media-image">
-    <img src="./images/rb1.png" alt="">
+    <img src="./images/mlgz/rb1.png" alt="">
     <p class="caption">Figura 23: Residus ajustats per a la variable Curricular_units_1st_sem_approved</p>
   </div>
   <div class="media-text">
@@ -827,7 +888,7 @@ Fem això per a les tres variables i analitzem els resultats. Mitjançant els gr
 
   <div class="media-row">
   <div class="media-image">
-    <img src="./images/rb2.png" alt="">
+    <img src="./images/mlgz/rb2.png" alt="">
     <p class="caption">Figura 24: Residus ajustats per a la variable Curricular_units_2nd_sem_enrolled</p>
   </div>
   <div class="media-text">
@@ -841,7 +902,7 @@ Fem això per a les tres variables i analitzem els resultats. Mitjançant els gr
 
   <div class="media-row">
   <div class="media-image">
-    <img src="./images/rb3.png" alt="">
+    <img src="./images/mlgz/rb3.png" alt="">
     <p class="caption">Figura 25: Residus ajustats per a la variable Curricular_units_2nd_sem_approved</p>
   </div>
   <div class="media-text">
@@ -875,7 +936,7 @@ Fem això per a les tres variables i analitzem els resultats. Mitjançant els gr
 
   <div class="image-row">
       <div class="image-column">
-        <img src="./images/m03_residus.png" alt="Gràfic de residus vs. valors ajustats">
+        <img src="./images/mlgz/m03_residus.png" alt="Gràfic de residus vs. valors ajustats">
         <p class="caption">Figura 26: Gràfic de residus de Pearson vs. valors ajustats del model m0.3</p>
       </div>
   </div>
@@ -1027,7 +1088,7 @@ La corba ROC resultant és la següent:
 
 <div class="image-row">
     <div class="image-column">
-      <img src="./images/roc_curve.png" alt="Corba ROC del model final">
+      <img src="./images/mlgz/roc_curve.png" alt="Corba ROC del model final">
       <p class="caption">Figura 27: Corba ROC del model final m0.1</p>
     </div>
 </div>
@@ -1045,3 +1106,250 @@ auc_value
 Obtenim un valor d’AUC de `0.9220703`, indicant que el model té una excel·lent capacitat per distingir entre estudiants que abandonen i els que no ho fan. Un AUC proper a 1 suggereix que el model és molt efectiu en la classificació correcta de les observacions.
 
 ## 9. Sèries temporals
+
+### 9.1 Introducció
+
+En el cas de sèries temporals, no hem pogut fer servir el mateix model, a causa de la falta de la variable de temps, per tant, hem buscat un model que seguís els requisits proposats per la guia del treball, i seguidament que també ens despertés un cert interès. En aquest cas, hem optat per un gust més personal, els cotxes. El nostre dataset tracta sobre la venda de cotxes mensual, de l'any 1960-1968.
+
+Hem escollit aquest dataset també, per saber si en la venda de cotxes hi ha una tendència o una explicació estadística, ja que d’aquesta manera, els mateixos concessionaris de cotxes poden fer una predicció de cotxes venuts, i els fabricants també podrien fer-ne una per saber el nombre de cotxes que s’haurien de fabricar de manera estimada. Per tant, creiem que és un tema força interessant, i que és informació molt útil per un sector de la indústria. És cert que és informació bastant antiga, però no vol dir que les tendències hagin canviat. Això també podria arribar a ser un aspecte interessant a l'hora d’estudiar el comportament dels mercats actuals amb els de fa més de seixanta anys.
+
+### 9.2 Anàlisi exploratori
+
+Per començar amb l'anàlisi exploratori, hem carregat les llibreries necessàries i el dataset. Un cop fet això, fem un plot de la sèrie temporal per veure com es comporten les vendes al llarg del temps. El farem mitjançant la llibreria `ggplot2` de R:
+
+```r
+Car_sales_ts <- ts(car_sales$Sales, start = c(1960, 1), frequency = 12)
+plot(Car_sales_ts)
+```
+
+El gràfic resultant és el següent:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/1.serie_inicial.png" alt="Sèrie temporal de les vendes mensuals de cotxes">
+      <p class="caption">Figura 28: Sèrie temporal de les vendes mensuals de cotxes</p>
+    </div>
+</div>
+
+Podem observar clarament pujades i baixades amb una tendència a l’alça i patrons que es repeteixen cada any (estacionalitat). Aquest comportament ens indica que la mitjana i la variància canvien al llarg del temps, així que abans de fer una anàlisi estadística o prediccions caldrà transformar la sèrie: normalitzar la variància, eliminar la tendència i treure l’efecte estacional. Aquests passos seran bàsics per a poder aplicar models clàssics de sèries temporals i assegurar resultats fiables.
+
+Per fer això, primer fer la descomposició de la sèrie temporal utilitzant la funció `decompose()` de R, que ens permet separar la sèrie en components de tendència, estacionalitat i residus. Això ens ajudarà a entendre millor els patrons presents en les dades i a preparar-les per a l’anàlisi posterior. Abans però, farem la conversió de la columna ``Month`` a format ``Date`` amb la funció ``as.Date()``. També farem una transformació logarítmica de la sèrie per estabilitzar la variància:
+
+```r
+Ln_sales <- log(car_sales_ts)
+plot(Ln_sales)
+decomposada <- decompose(lnsales)
+plot(decomposada)
+```
+
+El gràfic resultant de la descomposició és el següent:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/2.descompocisio.png" alt="Descomposició de la sèrie temporal de vendes mensuals de cotxes">
+      <p class="caption">Figura 29: Descomposició de la sèrie temporal de vendes mensuals de cotxes</p>
+  </div>
+</div>
+
+La descomposició d’una sèrie temporal és **fonamental** perquè ens permet veure clarament de què està formada la sèrie: la tendència general, el patró estacional que es repeteix cada any i la part aleatòria o soroll.
+En aquest gràfic es veu tot: la línia “trend” mostra com la mitjana de vendes creix al llarg dels anys (tendència), la línia “seasonal” reflecteix els cicles anuals molt marcats (estacionalitat) i la línia “random” ens ensenya les fluctuacions més imprevisibles.
+Això ens indica que, per poder modelitzar i fer bones previsions amb aquestes dades, caldrà eliminar la tendència i l’estacionalitat perquè la part aleatòria sigui l’única protagonista: només així la sèrie serà estacionària i preparada per aplicar-hi models com ARIMA o predicció clàssica.
+
+Per determinar si la sèrie de vendes mensuals de cotxes és estacionària, comencem representant gràficament les dades. Primer representem la sèrie log-transformada. Ho fem perquè la transformació logarítmica ajuda a estabilitzar la variància, especialment quan les dades mostren una tendència creixent com en aquest cas. Executant el codi següent:
+
+```r
+ln_sales <- log(car_sales_ts)
+plot(ln_sales, main = "Log(Vendes mensuals de cotxes)", ylab = "Log(Vendes)", xlab = "Any")
+```
+
+Obtenim el següent gràfic:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/3.logvendes_mensuals.png" alt="Sèrie temporal log-transformada de les vendes mensuals de cotxes">
+      <p class="caption">Figura 30: Sèrie temporal log-transformada de les vendes mensuals de cotxes</p>
+    </div>
+</div>
+
+On s’aprecien clarament un creixement sostingut en el nivell mig (tendència) i cicles estacionals repetits. Això indica, visualment, que la sèrie no és estacionària, ja que la seva mitjana i els patrons de variància canvien amb el temps.
+
+A continuació, utilitzem la diferenciació d’ordre 12, que elimina els patrons estacionals anuals. Executem el següent codi:
+
+```r
+d12_ln_sales <- diff(ln_sales, lag = 12)
+plot(d12_ln_sales, main = "Diferenciació d'ordre 12", ylab = "Diferència lag 12", xlab = "Any")
+```
+
+El gràfic resultant és el següent:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/4.Diferenciacio_ordre_12.png" alt="Sèrie temporal després de la diferenciació d'ordre 12">
+      <p class="caption">Figura 31: Sèrie temporal després de la diferenciació d'ordre 12</p>
+    </div>
+</div>
+
+Podem veure que la sèrie resultant ja no presenta estacionalitat visible, però encara pot persistir certa tendència. Per eliminar completament la tendència, apliquem una diferenciació d’ordre 1 addicional sobre la sèrie diferenciada d’ordre 12. Executem el següent codi:
+
+```r
+d1d12_ln_sales <- diff(d12_ln_sales, lag = 1)
+plot(d1d12_ln_sales, main = "Diferenciació doble (lag 1 i 12)", ylab = "Diferència lag 1 i 12", xlab = "Any")
+```
+
+El gràfic resultant és el següent:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/5.Diferenciacio_doble.png" alt="Sèrie temporal després de la diferenciació d'ordre 1 i 12">
+      <p class="caption">Figura 32: Sèrie temporal després de la diferenciació d'ordre 1 i 12</p>
+    </div>
+</div>
+
+El gràfic resultant mostra una sèrie amb mitjana i variància estables i sense cap tendència o patró clar identificable. Això és indicatiu que la sèrie transformada és ara pràcticament estacionària: ha desaparegut tant la tendència com l’estacionalitat, i les fluctuacions semblen aleatòries al voltant del zero
+
+### 9.3 Transformacions
+
+#### 9.3.1 Canvi d'escala
+
+Per a diagnosticar si la sèrie temporal té heterocedasticitat, podem utilitzar diversos mètodes gràfics i estadístics. En el nostre cas, farem el gràfic de la mitjana mòbil i la variància mòbil per observar si hi ha canvis en la dispersió al llarg del temps. Si la variància depèn del nivell de la sèrie, això indicaria heterocedasticitat.
+
+Per a calcular les mitjanes i variàncies mòbils, fixem primer un període de finestra, per exemple, 12 mesos (un any):
+
+```r
+group_size <- 12
+n <- length(sales)
+num_groups <- floor(n / group_size)
+```
+
+Després, calculem la mitjana i la variància mòbils per a cada grup de 12 mesos amb un bucle:
+
+```r
+for (i in 1:num_groups) {
+  group <- sales[((i-1)*group_size + 1):(i*group_size)]
+  means[i] <- mean(group)
+  vars[i] <- var(group)
+}
+```
+
+Finalment, representem gràficament les mitjanes i variàncies mòbils:
+
+```r
+# Plot de la variància contra la mitjana de cada grup
+ggplot(df, aes(x = mean, y = variance)) +
+  geom_point(color = "blue", size = 2) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", linewidth = 1) +
+  labs(title = "Mean-Variance plot",
+       x = "Mitjana del grup",
+       y = "Variància del grup") +
+  theme_minimal()
+```
+
+El gràfic resultant és el següent:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/6.Mean_variance_plot.png" alt="Gràfic de mitjana vs. variància mòbil">
+      <p class="caption">Figura 33: Gràfic de mitjana vs. variància mòbil</p>
+    </div>
+</div>
+
+El gràfic Mean-Variance mostra que, a mesura que augmenta la mitjana de vendes dins de cada grup, la variància també creix. Aquesta relació positiva indica clarament que la variància no és constant al llarg del temps, sinó que depèn del nivell de la mitjana de la sèrie. Aquesta situació es coneix com a heteroscedasticitat i no és pròpia d’una sèrie estacionària. Quan s’observa aquest comportament, cal aplicar transformacions, com la logarítmica, per aconseguir estabilitzar la variància abans de continuar analitzant o modelitzant la sèrie.
+
+També podem visualtizar els boxplots de les vendes anuals per veure si hi ha diferències en la dispersió de les vendes entre els diferents anys. Això ens pot donar una idea de si la variància canvia al llarg del temps. Ho fem amb la llibreria `ggplot2` i el resultat és el següent:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/7.Boxplot_anual.png" alt="Boxplots de les vendes mensuals de cotxes per any">
+      <p class="caption">Figura 34: Boxplots de les vendes mensuals de cotxes per any</p>
+    </div>
+</div>
+
+En dividir la sèrie de vendes mensuals de cotxes en grups d’un any i representar-ne el boxplot per cada període, s’observa que l’alçada de les caixes (IQR) augmenta progressivament a mesura que avança el temps. Aquesta major variabilitat en els grups amb valors mitjans més alts indica que la variància no és constant al llarg del temps. Per això, és necessari aplicar una transformació d’escala, com la logarítmica o com la de Box-Cox, per estabilitzar la variància abans de continuar amb l’anàlisi de la sèrie temporal.
+
+Per aplicar la tranformació logarítmica, utilitzem la funció `log()` de R. Primer apliquem la transformació logarítmica a les vendes mensuals i després representem els boxplots anuals després de la transformació, que resulta en el següent gràfic:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/8.Transformacio_log_boxplot.png" alt="Boxplots de les vendes mensuals de cotxes per any després de la transformació logarítmica">
+      <p class="caption">Figura 35: Boxplots de les vendes mensuals de cotxes per any després de la transformació logarítmica</p>
+    </div>
+</div>
+
+Amb la gràfica del boxplot de log(vendes) per períodes d’un any, es pot concloure que la variància s’ha estabilitzat: les caixes (IQR) són molt més uniformes entre els diferents grups anuals, i la diferència d’alçada respecte als primers anys pràcticament ha desaparegut. Això vol dir que la transformació logarítmica ha estat efectiva per aconseguir variància aproximadament constant a la sèrie, fet que permet aplicar mètodes d’anàlisi estacionària amb més garanties de validesa estadística.
+
+Per aplicar la transfromació Box-Cox, utilitzem la funció `BoxCox.lambda()` de la llibreria `forecast` per trobar el millor valor de lambda per a la transformació Box-Cox. Primer estima el valor de lambda amb ``BoxCox.lambda()``, que ens retorna `0.9700565` i després aplica la transformació amb la funció ``BoxCox()``, de que obtenim el següent gràfic de boxplots anuals després de la transformació:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/9.Box-Cox.png" alt="Boxplots de les vendes mensuals de cotxes per any després de la transformació Box-Cox">
+      <p class="caption">Figura 36: Boxplots de les vendes mensuals de cotxes per any després de la transformació Box-Cox</p>
+    </div>
+</div>
+
+En el cas de la nostra base de dades de vendes mensuals de cotxes, la variància augmenta amb la mitjana: això es veu clarament en els boxplots anuals, on les caixes són més altes a mesura que les vendes creixen. Si només fem el logaritme, podem estabilitzar bastant la variància, però la transformació Box-Cox és millor perquè busca automàticament quin tipus de transformació s’adapta millor als nostres valors.
+Això fa que la variància sigui encara més estable i la sèrie sigui més fàcil d’analitzar o de modelar després. Així, per les nostres dades, Box-Cox és la millor opció per aconseguir una sèrie més homogènia i adequada per a l’anàlisi de sèries temporals.
+
+#### 9.3.2 Diferència estacional
+
+Per eliminar l’estacionalitat de la sèrie temporal de vendes mensuals de cotxes, utilitzem la diferenciació estacional. Aquesta tècnica consisteix a restar els valors de la sèrie amb els valors corresponents del mateix període en l’any anterior. Això ajuda a eliminar els patrons estacionals que es repeteixen cada any. Després d'aplicar la diferenciació estacional d’ordre 12, podem analitzar les funcions d’autocorrelació (ACF) i autocorrelació parcial (PACF) per veure si encara hi ha estacionalitat residual. Per fer-ho, utilitzem la funció `diff()` de R amb un lag de 12:
+
+```r
+sales_d12 <- diff(sales_ts, lag = 12)
+acf(sales_d12, ylim = c(-1, 1), lag.max = (40), main = "ACF diferència estacional")
+pacf(sales_d12, ylim = c(-1, 1), lag.max = (40), main = "PACF diferència estacional")
+```
+
+Els gràfics resultants són els següents:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/10. Diferencia_estacional.png" alt="Funció d'autocorrelació (ACF) després de la diferenciació estacional">
+      <p class="caption">Figura 37: Funció d'autocorrelació (ACF) després de la diferenciació estacional</p>
+    </div>
+    <div class="image-column">
+      <img src="./images/ts/11.diferencia_regular.png" alt="Funció d'autocorrelació parcial (PACF) després de la diferenciació estacional">
+      <p class="caption">Figura 38: Funció d'autocorrelació parcial (PACF) després de la diferenciació estacional</p>
+    </div>
+</div>
+
+Podem veure que gairebé totes les barres es situen dins dels límits de significació. Això indica que el patró estacional anual s’ha eliminat i la sèrie ja no presenta les dependències regulars que tenia inicialment. Aquesta transformació ha convertit la sèrie de vendes mensuals de cotxes en una sèrie molt més homogènia i pròxima a l’estacionarietat, la qual cosa la fa més adequada per a l’anàlisi estadística i la modelització amb models ARIMA i similars. 
+
+També podem visualitzar la sèrie temporal després d’aplicar la diferència regular d’ordre 1 per eliminar la tendència. Utilitzem la funció `diff()` de R amb un lag de 1:
+
+```r
+diff1 <- diff(sales_ts, lag = 1)
+plot(diff1, main = "Diferència regular (ordre 1)")
+```
+
+El gràfic resultant és el següent:
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/11.diferencia_regular.png" alt="Sèrie temporal després de la diferenciació regular d'ordre 1">
+      <p class="caption">Figura 39: Sèrie temporal després de la diferenciació regular d'ordre 1</p>
+    </div>
+</div>
+
+Després d’aplicar la diferenciació regular d’ordre 1, s’obté una sèrie que ja no mostra una tendència clara al llarg del temps. Ara, les variacions s’acumulen de forma irregular al voltant del zero i la mitjana de la sèrie es manté estable. Això vol dir que la diferenciació ha eliminat l’efecte de la tendència i la sèrie està més a prop de ser estacionària: és a dir, té una mitjana constant i pot ser utilitzada per a models com ARIMA on aquesta propietat és fonamental.
+
+
+Analitzem també les funcions d’autocorrelació (ACF) i autocorrelació parcial (PACF) després d’aplicar la diferenciació regular d’ordre 1 per veure si encara hi ha dependències temporals. Utilitzem el següent codi:
+
+```r
+acf(ser_boxcox, lag.max = 40, ylim = c(-1,1), main = "ACF mostra vendes cotxes")
+pacf(ser_boxcox, lag.max = 40, ylim = c(-1,1), main = "PACF mostra vendes cotxes")
+```
+
+Els gràfics resultants són els següents:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/12.acf.png" alt="Funció d'autocorrelació (ACF) després de la diferenciació regular">
+      <p class="caption">Figura 40: Funció d'autocorrelació (ACF) després de la diferenciació regular</p>
+    </div>
+    <div class="image-column">
+      <img src="./images/ts/13.acf2.png" alt="Funció d'autocorrelació parcial (PACF) després de la diferenciació regular">
+      <p class="caption">Figura 41: Funció d'autocorrelació parcial (PACF) després de la diferenciació regular</p>
+    </div>
+</div>
+
+Després d’analitzar els gràfics d’ACF i PACF, es pot concloure que la sèrie de vendes mensuals, un cop diferenciada correctament, mostra un comportament pròxim a un AR(1): la PACF té un pic important al primer lag i després decau ràpidament, mentre que la ACF decau suaument i no talla en sec. Això indica que la dependència principal de la sèrie respecte a valors anteriors és autoregressiva d’ordre 1, i no de tipus mitjana mòbil. Aquest resultat serveix de base per escollir l’estructura del model ARIMA més adequat.

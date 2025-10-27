@@ -3,7 +3,7 @@ library(ggplot2)
 library(dplyr)
 
 # Llegir el fitxer CSV
-data <- read_csv("C:/Users/polri/Desktop/Uni/2n/1r Quatrimestre/ME/Lab/monthly-car-sales.csv")
+data <- read_csv("./time-series/monthly-car-sales.csv")
 
 # Convertir la columna Month a un objecte de tipus data
 data <- data %>%
@@ -32,7 +32,7 @@ library(ggplot2)
 #-------------------------------------------------------------------------------
 # Llegir la base de dades
 #-------------------------------------------------------------------------------
-car_sales <- read_csv("C:/Users/polri/Desktop/Uni/2n/1r Quatrimestre/ME/Lab/monthly-car-sales.csv", show_col_types = FALSE)
+car_sales <- read_csv("./time-series/monthly-car-sales.csv", show_col_types = FALSE)
 
 # Crear la sèrie temporal
 Car_sales_ts <- ts(car_sales$Sales, start = c(1960, 1), frequency = 12)
@@ -60,7 +60,7 @@ plot(d1d12_ln_sales, main = "Diferenciació doble (lag 1 i 12)", ylab = "Diferè
 
 sales <- car_sales$Sales
 
-# Fixa la mida del grup (per exemple, 12 per anys)
+# Fixa la mida del grup (per exemple, 12, per anys)
 group_size <- 12
 n <- length(sales)
 num_groups <- floor(n / group_size)
