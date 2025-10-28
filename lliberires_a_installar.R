@@ -3,4 +3,6 @@ install.packages("DataExplorer")
 install.packages("SmartEDA")
 install.packages("ROCR")
 install.packages("detectseparation") 
-
+install.packages("forecast")
+install.packages("dplyr")
+install.packages("ggplot2")

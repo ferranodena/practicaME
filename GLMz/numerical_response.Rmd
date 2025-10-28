@@ -1,13 +1,7 @@
----
-title: "Numerical Response"
-output: "html_document"
-date: "15/10/2025"
----
 
-
-# Model 1 fit
+## 0. Carreguem i anàlisi inicial
+Carreguem les dades 
 ```{r}
-# Carreguem les dades
 library(readr)
 data <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
     Marital_status = col_character(),
@@ -51,320 +45,91 @@ data <- read_csv("../preprocessing/clean-data.csv", col_types = cols(
 )
 ```
 
+
+Descriptiva previa de la variable a estudiar (Admission_grade)
 ```{r}
-# Descriptiva previa de la variable a estudiar (Admission_grade)
-summary(data$Curricular_units_1st_sem_grade)
-hist(data$Curricular_units_1st_sem_grade)
+summary(data$Admission_grade)
+hist(data$Admission_grade)
 ```
 
+## 1. Model complet i model nul
+
+Construim un mlgz sobre la variable a estudiar i fem el summary
 ```{r}
-# Construim un mlgz sobre la variable a estudiar
-model <- glm(Curricular_units_1st_sem_grade ~ . - Target, data = data, family = gaussian())
-summary(model)
+model_complet <- glm(Admission_grade ~ . - Target, data = data, family = gaussian())
+summary(model_complet)
 ```
 
+
+Construim el model nul
 ```{r}
-# Construim el model nul
-model_nul <- glm(Curricular_units_1st_sem_grade ~ 1, data = data, family = gaussian)
+model_nul <- glm(Admission_grade ~ 1, data = data, family = gaussian)
+```
+
+
+Comparem el model complet amb el model nul, per assegurar-nos de que tot funciona correctament (utilitzem el test anova)
+```{r}
+anova(model_complet, model_nul, test="Chisq")
+```
+
+
+## 2. Construcció d'un model amb les variables més significatives
+
+Construïm el model
+```{r}
+# Ajusta el model amb les variables més significatives
+model_1 <- glm(Admission_grade ~ 
+                       Application_mode + 
+                       Course + 
+                       Previous_qualification + 
+                       Previous_qualification_grade + 
+                       Age_at_enrollment + 
+                       Unemployment_rate + 
+                       Application_order + 
+                       Curricular_units_1st_sem_evaluations + 
+                       GDP, 
+                     data = data, 
+                     family = gaussian())
+
 
 ```
 
+Comparem el model que hem fet amb el model complet, per assegurar-nos de que tot funciona correctament (utilitzem el test anova)
 ```{r}
-# Comparem el nostre model complet amb el model nul
-anova(model, model_nul, test = "Chisq")
+anova(model_1, model_complet, test="Chisq")
 ```
 
+
+## 3. Construim un model reduit utilitzant la comanda step, per eliminar variables redundants.
 ```{r}
-# Construim un model reduit, eliminant les variables poc significatives
-model2 <- glm(
-  Curricular_units_1st_sem_grade ~ 
-    Course + 
-    Curricular_units_1st_sem_credited + 
-    Curricular_units_1st_sem_enrolled + 
-    Curricular_units_1st_sem_evaluations + 
-    Curricular_units_1st_sem_approved + 
-    Curricular_units_2nd_sem_approved + 
-    Curricular_units_2nd_sem_grade + 
-    Mother_s_occupation + 
-    Admission_grade,
-  data = data, family = gaussian
-)
-summary(model2)
+model_final <- step(model_complet, direction = "both")
 ```
 
+Comparem el nou model reduit amb el model anterior, per assegurar-nos de que no hi han diferències estadísticament significatives
 ```{r}
-# Comparem el nou model amb el model nul, per veure si hi ha diferència significativa
-anova(model, model2, test = "Chisq")
+anova(model_complet, model_final, test="Chisq")
+```
+Mirem la puntuació AIC d'ambdós models
+```{r}
+AIC(model_complet)
+AIC(model_final)
 ```
 
-```{r}
-# Comparem el nou model amb el model complet
-anova(model, model2, test = "Chisq")
-```
-
-```{r}
-# Afegim variables al model reduit (utilitzem la comanda step)
-model_step <- step(model, direction = "both")
-summary(model_step)
-```
-
-```{r}
-# Comparem el model step amb el model complet
-anova(model, model_step, test = "Chisq")
-```
-
-# Model validation
-```{r}
-library(car)
-residualPlot(model_step)
-```
-
-```{r}
-library(car)
-residualPlots(model_step)
-```
-
-```{r}
-influencePlot(model = model_step)
-```
-
-```{r}
-vif(model_step)
-```
-
-```{r}
-# Seleccionar variables numèriques correlacionades
-vars_pca <- data[, c(
-  'Curricular_units_1st_sem_credited',
-  'Curricular_units_1st_sem_enrolled',
-  'Curricular_units_1st_sem_evaluations',
-  'Curricular_units_1st_sem_approved',
-  'Curricular_units_2nd_sem_approved',
-  'Curricular_units_2nd_sem_grade',
-  'Curricular_units_2nd_sem_enrolled'
-)]
-```
-
-```{r}
-# Fer PCA amb escalat
-pca_result <- prcomp(vars_pca, center = TRUE, scale. = TRUE)
-
-# Veure resum de variància explicada
-summary(pca_result)
-```
-
-```{r}
-model_polinomic <- glm(
-  Curricular_units_1st_sem_grade ~ 
-    Course +
-    Previous_qualification +
-    Previous_qualification_grade +
-    Admission_grade + I(Admission_grade^2) +
-    Age_at_enrollment + I(Age_at_enrollment^2) +
-    Curricular_units_1st_sem_credited + I(Curricular_units_1st_sem_credited^2) +
-    Curricular_units_1st_sem_enrolled + I(Curricular_units_1st_sem_enrolled^2) +
-    Curricular_units_1st_sem_evaluations + I(Curricular_units_1st_sem_evaluations^2) +
-    Curricular_units_1st_sem_approved + I(Curricular_units_1st_sem_approved^2) +
-    Curricular_units_2nd_sem_enrolled + I(Curricular_units_2nd_sem_enrolled^2) +
-    Curricular_units_2nd_sem_approved + I(Curricular_units_2nd_sem_approved^2) +
-    Curricular_units_2nd_sem_grade + I(Curricular_units_2nd_sem_grade^2) +
-    Unemployment_rate,
-  data = data, family = gaussian()
-)
-summary(model_polinomic)
-```
-
-```{r}
-residualPlot(model_polinomic)
-```
-
-```{r}
-residualPlots(model_polinomic)
-``` 
+## 4. Validació del model
 
 
+Visualitzem diferents gràfics per veure que tan bé funciona el nostre model
 
 ```{r}
 library(car)
-residualPlots(model_step)
-```
-
-```{r}
-influencePlot(model = model_step)
-```
-
-```{r}
-vif(model_step)
-```
-
-
-```{r}
-anova(model, model_polinomic, test = "Chisq")
-```
-
-```{r}
-summary(model_polinomic)
-```
-
-
-# Model 2 fit
-```{r}
-# Carreguem les dades
-library(readr)
-data <- read_csv("preprocessing/clean-data.csv")
-```
-
-```{r}
-# Descriptiva previa de la variable a estudiar (Admission_grade)
-summary(data$Curricular_units_2nd_sem_grade)
-hist(data$Curricular_units_2nd_sem_grade)
-```
-
-```{r}
-# Construim un mlgz sobre la variable a estudiar
-model <- glm(Curricular_units_2nd_sem_grade ~ . - Target, data = data, family = gaussian())
-summary(model)
-```
-
-```{r}
-# Construim el model nul
-model_nul <- glm(Curricular_units_2nd_sem_grade ~ 1, data = data, family = gaussian)
-
-```
-
-```{r}
-# Comparem el nostre model complet amb el model nul
-anova(model, model_nul, test = "Chisq")
-```
-
-```{r}
-# Construim un model reduit, eliminant les variables poc significatives
-model2 <- glm(
-  Curricular_units_2nd_sem_grade ~ 
-    Course + 
-    Curricular_units_2nd_sem_credited + 
-    Curricular_units_2nd_sem_enrolled + 
-    Curricular_units_2nd_sem_evaluations + 
-    Curricular_units_2nd_sem_approved + 
-    Curricular_units_1st_sem_approved + 
-    Curricular_units_1st_sem_grade + 
-    Mother_s_occupation + 
-    Admission_grade,
-  data = data, family = gaussian
-)
-summary(model2)
-```
-
-```{r}
-# Comparem el nou model amb el model nul, per veure si hi ha diferència significativa
-anova(model, model2, test = "Chisq")
-```
-
-```{r}
-# Comparem el nou model amb el model complet
-anova(model, model2, test = "Chisq")
-```
-
-```{r}
-# Afegim variables al model reduit (utilitzem la comanda step)
-model_step <- step(model, direction = "both")
-summary(model_step)
-```
-
-```{r}
-# Comparem el model step amb el model complet
-anova(model, model_step, test = "Chisq")
-```
-
-# Model 2 validation
-```{r}
-library(car)
-residualPlot(model_step)
+residualPlot(model_final)
 ```
 
 ```{r}
 library(car)
-residualPlot(model_step)
+residualPlots(model_final, layout = c(2, 2), ask = FALSE)
 ```
 
 ```{r}
-influencePlot(model = model_step)
-```
-
-```{r}
-vif(model_step)
-```
-
-```{r}
-# Seleccionar variables numèriques correlacionades
-vars_pca <- data[, c(
-  'Curricular_units_1st_sem_credited',
-  'Curricular_units_1st_sem_enrolled',
-  'Curricular_units_1st_sem_evaluations',
-  'Curricular_units_1st_sem_approved',
-  'Curricular_units_2nd_sem_approved',
-  'Curricular_units_2nd_sem_grade',
-  'Curricular_units_2nd_sem_enrolled'
-)]
-```
-
-```{r}
-# Fer PCA amb escalat
-pca_result <- prcomp(vars_pca, center = TRUE, scale. = TRUE)
-
-# Veure resum de variància explicada
-summary(pca_result)
-```
-
-```{r}
-model_polinomic <- glm(
-  Curricular_units_2nd_sem_grade ~ 
-    Course +
-    Previous_qualification +
-    Previous_qualification_grade +
-    Admission_grade + I(Admission_grade^2) +
-    Age_at_enrollment + I(Age_at_enrollment^2) +
-    Curricular_units_1st_sem_credited + I(Curricular_units_1st_sem_credited^2) +
-    Curricular_units_1st_sem_enrolled + I(Curricular_units_1st_sem_enrolled^2) +
-    Curricular_units_1st_sem_evaluations + I(Curricular_units_1st_sem_evaluations^2) +
-    Curricular_units_1st_sem_approved + I(Curricular_units_1st_sem_approved^2) +
-    Curricular_units_2nd_sem_enrolled + I(Curricular_units_2nd_sem_enrolled^2) +
-    Curricular_units_2nd_sem_approved + I(Curricular_units_2nd_sem_approved^2) +
-    Curricular_units_2nd_sem_grade + I(Curricular_units_2nd_sem_grade^2) +
-    Unemployment_rate,
-  data = data, family = gaussian()
-)
-summary(model_polinomic)
-```
-
-```{r}
-residualPlot(model_polinomic)
-```
-
-```{r}
-residualPlots(model_polinomic)
-``` 
-
-
-
-```{r}
-library(car)
-residualPlots(model_step)
-```
-
-```{r}
-influencePlot(model = model_step)
-```
-
-```{r}
-vif(model_step)
-```
-
-
-```{r}
-anova(model, model_polinomic, test = "Chisq")
-```
-
-```{r}
-summary(model_polinomic)
+influencePlot(model = model_final)
 ```
