@@ -35,13 +35,13 @@ library(ggplot2)
 car_sales <- read_csv("./time-series/monthly-car-sales.csv", show_col_types = FALSE)
 
 # Crear la sèrie temporal
-Car_sales_ts <- ts(car_sales$Sales, start = c(1960, 1), frequency = 12)
+car_sales_ts <- ts(car_sales$Sales, start = c(1960, 1), frequency = 12)
 plot(Car_sales_ts)
 # Transformació logarítmica
-Ln_sales <- log(car_sales_ts)
+ln_sales <- log(car_sales_ts)
 plot(Ln_sales)
 # Descomposició de la sèrie
-decomposada <- decompose(lnsales)
+decomposada <- decompose(Ln_sales)
 
 # Gràfic de la descomposició (sense 'main')
 plot(decomposada)
@@ -99,7 +99,25 @@ ggplot(df, aes(x = group, y = sales)) +
        y = "Vendes") +
   theme_minimal()
 
+eps <- 0
+if (any(sales <= 0)) {
+  eps <- abs(min(sales)) + 1e-6   # desplaça perquè tot sigui > 0
+}
+sales_log <- log(sales + eps)
 
+# Grup anual (12 observacions per grup)
+group <- rep(1:floor(length(sales_log)/12), each = 12, length.out = length(sales_log))
+
+# Data frame per al boxplot
+df <- data.frame(sales_log = sales_log, group = as.factor(group))
+
+# Boxplot per grups
+ggplot(df, aes(x = group, y = sales_log)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot de log(vendes) per períodes d’1 any",
+       x = "Grup anual",
+       y = "log(vendes)") +
+  theme_minimal()
 sales <- car_sales$Sales
 
 # Estima el millor valor de lambda per Box-Cox

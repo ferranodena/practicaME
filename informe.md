@@ -128,36 +128,33 @@
 
 </style>
 
-# INFORME D4
-
 ## 0. Taula de continguts
 
-- [INFORME D4](#informe-d4)
-  - [0. Taula de continguts](#0-taula-de-continguts)
-  - [1. Introducció](#1-introducció)
-  - [2. Dades del problema](#2-dades-del-problema)
-  - [3. Pla de treball](#3-pla-de-treball)
-  - [4. Objectius i metodologia](#4-objectius-i-metodologia)
-  - [5. Preprocessament de les dades](#5-preprocessament-de-les-dades)
-  - [6. Anàlisi exploratori](#6-anàlisi-exploratori)
-  - [7. Ajustament d'un MLGz numèric](#7-ajustament-dun-mlgz-numèric)
-    - [7.1 Selecció de variables](#71-selecció-de-variables)
-    - [7.2 Validació del model](#72-validació-del-model)
-  - [8. Ajustament d'un MLGz binari](#8-ajustament-dun-mlgz-binari)
-    - [8.1 Diagnòstic i solució de separació](#81-diagnòstic-i-solució-de-separació)
-    - [8.2 Ajustament del model inicial](#82-ajustament-del-model-inicial)
-    - [8.3 Validació del model](#83-validació-del-model)
-    - [8.4 Possibles millores](#84-possibles-millores)
-      - [8.4.1 Dades agregades per binomis](#841-dades-agregades-per-binomis)
-      - [8.4.2 Model amb dues pendents](#842-model-amb-dues-pendents)
-      - [8.4.3 Link probit](#843-link-probit)
-      - [8.5 Corba ROC i AUC](#85-corba-roc-i-auc)
-  - [9. Sèries temporals](#9-sèries-temporals)
-    - [9.1 Introducció](#91-introducció)
-    - [9.2 Anàlisi exploratori](#92-anàlisi-exploratori)
-    - [9.3 Transformacions](#93-transformacions)
-      - [9.3.1 Canvi d'escala](#931-canvi-descala)
-      - [9.3.2 Diferència estacional](#932-diferència-estacional)
+- [0. Taula de continguts](#0-taula-de-continguts)
+- [1. Introducció](#1-introducció)
+- [2. Dades del problema](#2-dades-del-problema)
+- [3. Pla de treball](#3-pla-de-treball)
+- [4. Objectius i metodologia](#4-objectius-i-metodologia)
+- [5. Preprocessament de les dades](#5-preprocessament-de-les-dades)
+- [6. Anàlisi exploratori](#6-anàlisi-exploratori)
+- [7. Ajustament d'un MLGz numèric](#7-ajustament-dun-mlgz-numèric)
+  - [7.1 Selecció de variables](#71-selecció-de-variables)
+  - [7.2 Validació del model](#72-validació-del-model)
+- [8. Ajustament d'un MLGz binari](#8-ajustament-dun-mlgz-binari)
+  - [8.1 Diagnòstic i solució de separació](#81-diagnòstic-i-solució-de-separació)
+  - [8.2 Ajustament del model inicial](#82-ajustament-del-model-inicial)
+  - [8.3 Validació del model](#83-validació-del-model)
+  - [8.4 Possibles millores](#84-possibles-millores)
+    - [8.4.1 Dades agregades per binomis](#841-dades-agregades-per-binomis)
+    - [8.4.2 Model amb dues pendents](#842-model-amb-dues-pendents)
+    - [8.4.3 Link probit](#843-link-probit)
+    - [8.5 Corba ROC i AUC](#85-corba-roc-i-auc)
+- [9. Sèries temporals](#9-sèries-temporals)
+  - [9.1 Introducció](#91-introducció)
+  - [9.2 Anàlisi exploratori](#92-anàlisi-exploratori)
+  - [9.3 Transformacions](#93-transformacions)
+    - [9.3.1 Canvi d'escala](#931-canvi-descala)
+    - [9.3.2 Diferència estacional](#932-diferència-estacional)
 
 <div class="page-break"></div>
 
@@ -1312,7 +1309,7 @@ Els gràfics resultants són els següents:
     </div>
 </div>
 
-Podem veure que gairebé totes les barres es situen dins dels límits de significació. Això indica que el patró estacional anual s’ha eliminat i la sèrie ja no presenta les dependències regulars que tenia inicialment. Aquesta transformació ha convertit la sèrie de vendes mensuals de cotxes en una sèrie molt més homogènia i pròxima a l’estacionarietat, la qual cosa la fa més adequada per a l’anàlisi estadística i la modelització amb models ARIMA i similars. 
+Podem veure que gairebé totes les barres es situen dins dels límits de significació. Això indica que el patró estacional anual s’ha eliminat i la sèrie ja no presenta les dependències regulars que tenia inicialment. Aquesta transformació ha convertit la sèrie de vendes mensuals de cotxes en una sèrie molt més homogènia i pròxima a l’estacionarietat, la qual cosa la fa més adequada per a l’anàlisi estadística i la modelització amb models ARIMA i similars.
 
 També podem visualitzar la sèrie temporal després d’aplicar la diferència regular d’ordre 1 per eliminar la tendència. Utilitzem la funció `diff()` de R amb un lag de 1:
 
@@ -1330,7 +1327,6 @@ El gràfic resultant és el següent:
 </div>
 
 Després d’aplicar la diferenciació regular d’ordre 1, s’obté una sèrie que ja no mostra una tendència clara al llarg del temps. Ara, les variacions s’acumulen de forma irregular al voltant del zero i la mitjana de la sèrie es manté estable. Això vol dir que la diferenciació ha eliminat l’efecte de la tendència i la sèrie està més a prop de ser estacionària: és a dir, té una mitjana constant i pot ser utilitzada per a models com ARIMA on aquesta propietat és fonamental.
-
 
 Analitzem també les funcions d’autocorrelació (ACF) i autocorrelació parcial (PACF) després d’aplicar la diferenciació regular d’ordre 1 per veure si encara hi ha dependències temporals. Utilitzem el següent codi:
 
