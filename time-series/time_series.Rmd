@@ -1,0 +1,294 @@
+---
+title: "Codi_time_series"
+output: html_document
+date: "2025-10-29"
+---
+
+## Anàlisi exploratori
+
+Per començar l'anàlisi exploratori, hem carregat les nostres llibreries i la nostra base de dades a R.
+
+```{r}
+# Carregar les biblioteques necessàries
+library(readr)
+library(forecast)
+library(dplyr)
+library(ggplot2)
+
+# Carregar la base de dades
+car_sales <- read_csv("C:/Users/polri/Desktop/Uni/2n/1r Quatrimestre/ME/Lab/monthly-car-sales.csv", show_col_types = FALSE)
+
+```
+
+A continuació fem el nostre plot inicial de la sèrie temporal.
+
+```{r}
+# Crear la sèrie temporal
+car_sales_ts <- ts(car_sales$Sales, start = c(1960, 1), frequency = 12)
+plot(car_sales_ts)
+```
+
+Fem una transformació logaritmica per estabilitzar la variància:
+
+```{r}
+Ln_sales <- log(car_sales_ts)
+plot(Ln_sales, main = "Log(Vendes mensuals de cotxes)", ylab = "Log(Vendes)", xlab = "Any")
+```
+
+Ara fem una descomposició de la nostra sèrie temporal, ja que ens ajudarà a veure clarament com està formada la sèrie. Tota aquesta informació nes és molt útil més envadant.
+
+```{r}
+# Descomposició de la sèrie
+decomposada <- decompose(Ln_sales)
+plot(decomposada)
+```
+
+Per fer una diferencicació d'ordre 12, que ens servirà per eliminar els patrons anuals fem:
+```{r}
+d12_ln_sales <- diff(ln_sales, lag = 12)
+plot(d12_ln_sales, main = "Diferenciació d'ordre 12", ylab ="Diferència lag 12", xlab = "Any")
+```
+
+Per fer la diferenciació d’ordre 1 per poder eliminar qualsevol rastre de la tendència, fem:
+```{r}
+d1d12_ln_sales <- diff(d12_ln_sales, lag = 1)
+plot(d1d12_ln_sales, main = "Diferenciació doble (lag 1 i 12)", ylab = "Diferència lag 1 i 12", xlab = "Any")
+```
+
+## Transformacions
+
+Farem el gràfic de la mitjana mòbil i la variància mòbil per observar si hi ha canvis en la dispersió al llarg del temps. 
+```{r}
+group_size <- 12
+n <- length(car_sales_ts)
+num_groups <- floor(n / group_size)
+
+# Calcula mitjana i variància per a cada grup
+means <- numeric(num_groups)
+vars <- numeric(num_groups)
+
+for (i in 1:num_groups) {
+  group <- car_sales_ts[((i-1)*group_size + 1):(i*group_size)]
+  means[i] <- mean(group)
+  vars[i] <- var(group)
+}
+
+# Prepara data frame per plotar
+df <- data.frame(mean = means, variance = vars)
+
+# Plot de la variància contra la mitjana de cada grup
+ggplot(df, aes(x = mean, y = variance)) +
+  geom_point(color = "blue", size = 2) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", linewidth = 1) +
+  labs(title = "Mean-Variance plot",
+       x = "Mitjana del grup",
+       y = "Variància del grup") +
+  theme_minimal()
+```
+
+Per veure de manera més gràfica la sèrie també ho podem representar per boxplots, on cada "caixa" representa 1 any:
+```{r}
+# Associa cada valor a un grup de 12 observacions (per poder fer el boxplot)
+group <- rep(1:floor(length(car_sales_ts)/12), each = 12, length.out = length(car_sales_ts))
+df <- data.frame(sales = car_sales_ts, group = as.factor(group))
+
+# Crea el boxplot per grups
+ggplot(df, aes(x = group, y = sales)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot de vendes de cotxes per períodes d’1 any",
+       x = "Grup anual",
+       y = "Vendes") +
+  theme_minimal()
+```
+També ho podem veure fent la transformació logarítmica, que ens queda d'aquesta manera:
+
+```{r}
+
+# Aplica la transformació logarítmica
+log_sales <- log(car_sales_ts)
+
+# Crea el data frame amb la variable transformada
+df <- data.frame(log_sales = log_sales, group = as.factor(group))
+
+# Crea el boxplot per grups utilitzant ggplot2
+ggplot(df, aes(x = group, y = log_sales)) +
+  geom_boxplot(fill = "palegreen") +
+  labs(
+    title = "Boxplot de log(vendes) per períodes d'1 any",
+    x = "Grup anual",
+    y = "log(Vendes)"
+  ) +
+  theme_minimal()
+```
+
+Podem fer el mateix per la transformació Box-Cox, que ens queda:
+
+```{r}
+lambda <- BoxCox.lambda(car_sales_ts)
+
+# Aplica la transformació Box-Cox a la sèrie
+sales_boxcox <- BoxCox(car_sales_ts, lambda = lambda)
+
+
+# Si vols boxplots per comparativa:
+group <- rep(1:floor(length(sales_boxcox)/12), each = 12, length.out = length(sales_boxcox))
+df_boxcox <- data.frame(sales_boxcox = sales_boxcox, group = as.factor(group))
+
+library(ggplot2)
+ggplot(df_boxcox, aes(x = group, y = sales_boxcox)) +
+  geom_boxplot(fill = "lightyellow") +
+  labs(title = "Boxplot de Box-Cox(vendes) per períodes d’1 any",
+       x = "Grup anual",
+       y = "Box-Cox(vendes)") +
+  theme_minimal()
+
+```
+## ACF/PACF
+
+Per fer els gràfics ACF i PACF fem:
+
+```{r}
+# Gràfics ACF i PACF incials
+acf(car_sales_ts, ylim = c(-1, 1), lag.max = 48, main = "ACF")
+pacf(car_sales_ts, ylim = c(-1, 1), lag.max = 48, main = "PACF")
+```
+Amb la transformació logarítmica ens queden així:
+```{r}
+# Aplica la transformació logarítmica
+sales_log <- log(car_sales_ts)
+
+# Gràfic de la funció d'autocorrelació (ACF)
+acf(sales_log, ylim = c(-1, 1), lag.max = 48, main = "ACF de la sèrie log-transformada")
+
+# Gràfic de la funció d'autocorrelació parcial (PACF)
+pacf(sales_log, ylim = c(-1, 1), lag.max = 48, main = "PACF de la sèrie log-transformada")
+
+```
+
+Fent ara la diferenciació ordinària:
+
+```{r}
+# Diferenciació ordinària
+log_sales_diff1 <- diff(log_sales, lag = 1)       
+acf(log_sales_diff1, ylim = c(-1, 1), lag.max = 48, main = "ACF diferenciació ordinària")
+pacf(log_sales_diff1, ylim = c(-1, 1), lag.max = 48, main = "PACF diferenciació ordinària")
+
+```
+
+Fent la diferenciació estacional:
+
+```{r}
+# Diferenciació estacional
+log_sales_diff1_diff12 <- diff(log_sales_diff1, lag = 12)   
+
+acf(log_sales_diff1_diff12, ylim = c(-1, 1), lag.max = 48, main="ACF diferenciació estacional")
+pacf(log_sales_diff1_diff12, ylim = c(-1, 1), lag.max = 48, main="PACF diferenciació estacional")
+```
+
+## Proposta per els valors del model
+
+Farem servir els valors inicials següents:
+
+```{r}
+# Model inicial
+car_sales.arima <- arima(sales_log,
+                         order    = c(3,1,3), 
+                         seasonal = list(order = c(1,1,1), 
+                                         period = 12), include.mean = FALSE)
+
+# Mirem si són significatius
+ratios <- round(abs(car_sales.arima$coef/sqrt(diag(car_sales.arima$var.coef))),2)
+ratios
+ratios>2
+```
+
+Com podem veure que no ens donen tots els coeficients més grans de 2, seguim fent fins arribar als coeficients vàlids, sepre traient primer al més petit dels no vàlids.
+El nostre model final és:
+
+```{r}
+# Model final
+
+car_sales.arima2 <- arima(sales_log,
+                         order    = c(0,1,1), 
+                         seasonal = list(order = c(1,1,0), 
+                                         period = 12), include.mean = FALSE)
+
+# Mirem si són significatius
+ratios <- round(abs(car_sales.arima2$coef/sqrt(diag(car_sales.arima2$var.coef))),2)
+ratios
+ratios>2
+```
+
+Ara els hem de comparar amb AIC i el que ens quedi amb un valor més baix és el que farem servir. 
+
+```{r}
+AIC(car_sales.arima)
+AIC(car_sales.arima2)
+```
+
+Per tant ens el quedem com a model definitiu.
+
+```{r}
+mod_def <- car_sales.arima
+```
+## Validació del model
+
+Ara per començar validant el nostre model, fem els gràfics de residus temporals i de l'arrel quadrada dels nostres residus.
+
+```{r}
+# Validació del model
+# Homoscedasticitat
+resid <- mod_def$residuals
+par(mfrow=c(1,2), mar=c(3,3,3,3))
+plot(resid, main="Residuals")
+abline(h = c(0 , -3*sd(resid), 3*sd(resid)), lty = c(1,3,3), col=c(1,4,4))
+scatter.smooth(sqrt(abs(resid)), 
+               main="Square Root of Absolute residuals",
+               lpars = list(col=2))
+```
+Això ho fem per comprovar que hi ha homoscedasticitat.
+Seguidament hem de comprovar que els nostres residus tenen una distribució normal, per tant farem el següent codi:
+
+```{r}
+# Normalitat
+par(mfrow=c(1,2), mar=c(3,3,3,3))
+qqnorm(resid)
+qqline(resid,col=2,lwd=2)
+hist(resid, breaks = 10, freq=F)
+curve(dnorm(x, mean = mean(resid), sd = sd(resid)), col=2, add=T)
+```
+
+També hem d'acabar mirant si els nostres residus són independents, per tant fem:
+
+```{r}
+#Independència
+tsdiag(mod_def, gof.lag = 15)
+```
+## Predicció
+
+Ara fem el gràfic de predicció amb el nostre model ja validat, això ens donarà un gràfic amb un límit inferior, un de superior i una mitjana de predicció:
+
+```{r}
+
+# Calcul de les prediccions i de l'error estandard
+pred   <- predict(mod_def, n.ahead=24)
+pr_log <- pred$pred
+se_log <- pred$se
+
+# Intervals de logs
+li_log <- pr_log - 1.96 * se_log # limit inferior log
+ls_log <- pr_log + 1.96 * se_log # limit superior log
+
+# Desfer logaritmes
+li <- ts(exp(li_log), start = 1969, freq=12)
+pr <- ts(exp(pr_log), start = 1969, freq=12)
+ls <- ts(exp(ls_log), start = 1969, freq=12)
+
+# Grafic
+par(mfrow=c(1,1))
+ts.plot(car_sales_ts,
+        li, ls, pr,
+        lty  = c(1,2,2,1), 
+        col  = c("black","blue","blue","red"),
+        xlim = c(1960,1971))
+```

@@ -155,6 +155,9 @@
   - [9.3 Transformacions](#93-transformacions)
     - [9.3.1 Canvi d'escala](#931-canvi-descala)
     - [9.3.2 Diferència estacional](#932-diferència-estacional)
+  - [9.4 Proposta de valors per el model](#94-proposta-de-valors-per-el-model)
+  - [9.5 Validació del model](#95-validació-del-model)
+  - [9.6 Predicció](#96-predicció)
 
 <div class="page-break"></div>
 
@@ -271,10 +274,11 @@ Aquests canvis permeten una millor interpretació i anàlisi de les dades, facil
 
 ## 6. Anàlisi exploratori
 
-*cal canviar*
-Quan mirem el conjunt de dades, veiem que hi ha diferents tipus de variables, algunes numèriques i d’altres categòriques. En general, les numèriques no segueixen del tot una forma “normal”, algunes tenen valors molt agrupats i d’altres tenen punts que surten bastant del que seria esperable. Els gràfics de densitat i els boxplots mostren que hi ha bastants valors atípics i que les distribucions són força diferents entre variables, cosa que indica que no totes representen la informació de la mateixa manera. En alguns casos, hi ha variables amb una dispersió molt alta i altres molt concentrades, cosa que pot complicar una mica les anàlisis o la creació de models. Pel que fa a les variables categòriques, podem veure que no estan gaire equilibrades. Hi ha algunes categories molt freqüents, mentre que en tenim d’altres que gairebé no apareixen. Això pot fer que els resultats no siguin del tot justos, perquè el model podria donar més importància a les categories que tenen més dades i passar per alt les que en tenen poques, creant un biaix que s'hauria de tenir en compte a l'hora de fer models o prediccions.
+Les variables del conjunt de dades inclouen tant atributs numèrics com categòrics, amb patrons de distribució heterogenis entre elles. En les variables numèriques, les formes de les distribucions s’allunyen sovint de la normalitat, amb concentracions en rangs concrets i presència notable de valors extrems, tal com evidenciarien densitats i boxplots amb cues allargades i punts atípics. Algunes mesures presenten una dispersió elevada mentre que d’altres són molt concentrades, fet que pot afectar la robustesa d’estadístics descriptius i condicionar l’elecció de transformacions o mètodes robustos en modelatge.
 
-Quan mirem les relacions entre variables, podem veure que n’hi ha algunes que estan bastant relacionades. Els boxplots mostren diferències clares entre grups i els scatterplots deixen veure certs patrons que podrien ser útils més endavant. Tot això, ens fa pensar que hi ha variables amb una influència real sobre la variable resposta. En resum, el conjunt de dades és interessant, amb tendències clares i relacions útils, però també amb desequilibris i valors extrems que caldrà tenir en compte abans de fer models més avançats o prediccions.
+Pel que fa a les variables categòriques, la distribució de freqüències és desequilibrada: hi ha categories clarament majoritàries i d’altres amb presència residual. Aquest desbalance pot introduir biaix en models supervisats (per exemple, cap a classes amb més observacions) i pot requerir estratègies com reequilibri, agrupació de classes rares o ponderació per minimitzar l’efecte en l’entrenament i la validació. En conseqüència, caldrà tenir en compte tant la representativitat de les categories com la seva estabilitat a l’hora de fer inferència i predicció.
+
+En l’anàlisi bivariada, les relacions entre variables mostren patrons consistents: els boxplots per grups revelen diferències sistemàtiques en variables de rendiment acadèmic segons categories demogràfiques o administratives, i els scatterplots indiquen associacions útils entre mètriques del primer i segon semestre (enrolaments, avaluacions, aprovats i notes). Aquests indicis apunten a variables amb influència real sobre la resposta acadèmica final i sobre l’estat d’esdeveniment a la variable objectiu (Target). En conjunt, el dataset ofereix tendències clares i relacions aprofitables, però també desequilibris i valors atípics que s’hauran de tractar abans d’aplicar models més avançats o desplegar prediccions.
 
 ## 7. Ajustament d'un MLGz numèric
 
@@ -1115,8 +1119,8 @@ Hem escollit aquest dataset també, per saber si en la venda de cotxes hi ha una
 Per començar amb l'anàlisi exploratori, hem carregat les llibreries necessàries i el dataset. Un cop fet això, fem un plot de la sèrie temporal per veure com es comporten les vendes al llarg del temps. El farem mitjançant la llibreria `ggplot2` de R:
 
 ```r
-Car_sales_ts <- ts(car_sales$Sales, start = c(1960, 1), frequency = 12)
-plot(Car_sales_ts)
+car_sales_ts <- ts(car_sales$Sales, start = c(1960, 1), frequency = 12)
+plot(car_sales_ts)
 ```
 
 El gràfic resultant és el següent:
@@ -1128,14 +1132,14 @@ El gràfic resultant és el següent:
     </div>
 </div>
 
-Podem observar clarament pujades i baixades amb una tendència a l’alça i patrons que es repeteixen cada any (estacionalitat). Aquest comportament ens indica que la mitjana i la variància canvien al llarg del temps, així que abans de fer una anàlisi estadística o prediccions caldrà transformar la sèrie: normalitzar la variància, eliminar la tendència i treure l’efecte estacional. Aquests passos seran bàsics per a poder aplicar models clàssics de sèries temporals i assegurar resultats fiables.
+Podem observar clarament pujades i baixades amb una tendència a l’alça i patrons que es repeteixen cada any (estacionalitat). Aquest comportament ens indica que la mitjana i la variància canvien al llarg del temps, així que abans de fer una anàlisi estadístic o prediccions, caldrà transformar la sèrie: normalitzar la variància, eliminar la tendència i treure l’efecte estacional. Aquests passos seran bàsics per a poder aplicar models clàssics de sèries temporals i assegurar resultats fiables.
 
-Per fer això, primer fer la descomposició de la sèrie temporal utilitzant la funció `decompose()` de R, que ens permet separar la sèrie en components de tendència, estacionalitat i residus. Això ens ajudarà a entendre millor els patrons presents en les dades i a preparar-les per a l’anàlisi posterior. Abans però, farem la conversió de la columna ``Month`` a format ``Date`` amb la funció ``as.Date()``. També farem una transformació logarítmica de la sèrie per estabilitzar la variància:
+Per fer això, primer hem de fer la descomposició de la sèrie temporal utilitzant la funció `decompose()` de R, que ens permet separar la sèrie en components de tendència, estacionalitat i residus. Això ens ajudarà a entendre millor els patrons presents en les dades i a preparar-les per a l’anàlisi posterior. Abans però, farem la conversió de la columna ``Month`` a format ``Date`` amb la funció ``as.Date()``. També farem una transformació logarítmica de la sèrie per estabilitzar la variància:
 
 ```r
 Ln_sales <- log(car_sales_ts)
 plot(Ln_sales)
-decomposada <- decompose(lnsales)
+decomposada <- decompose(Ln_sales)
 plot(decomposada)
 ```
 
@@ -1252,7 +1256,18 @@ El gràfic resultant és el següent:
 
 El gràfic Mean-Variance mostra que, a mesura que augmenta la mitjana de vendes dins de cada grup, la variància també creix. Aquesta relació positiva indica clarament que la variància no és constant al llarg del temps, sinó que depèn del nivell de la mitjana de la sèrie. Aquesta situació es coneix com a heteroscedasticitat i no és pròpia d’una sèrie estacionària. Quan s’observa aquest comportament, cal aplicar transformacions, com la logarítmica, per aconseguir estabilitzar la variància abans de continuar analitzant o modelitzant la sèrie.
 
-També podem visualtizar els boxplots de les vendes anuals per veure si hi ha diferències en la dispersió de les vendes entre els diferents anys. Això ens pot donar una idea de si la variància canvia al llarg del temps. Ho fem amb la llibreria `ggplot2` i el resultat és el següent:
+També podem visualtizar els boxplots de les vendes anuals per veure si hi ha diferències en la dispersió de les vendes entre els diferents anys. Això ens pot donar una idea de si la variància canvia al llarg del temps. Ho fem amb la llibreria `ggplot2` i seguint el següent codi d'R:
+
+```r
+ggplot(df, aes(x = group, y = sales)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot de vendes de cotxes per períodes d’1 any",
+       x = "Grup anual",
+       y = "Vendes") +
+  theme_minimal()
+```
+
+El gràfic resultant és el següent:
 
 <div class="image-row">
     <div class="image-column">
@@ -1274,7 +1289,7 @@ Per aplicar la tranformació logarítmica, utilitzem la funció `log()` de R. Pr
 
 Amb la gràfica del boxplot de log(vendes) per períodes d’un any, es pot concloure que la variància s’ha estabilitzat: les caixes (IQR) són molt més uniformes entre els diferents grups anuals, i la diferència d’alçada respecte als primers anys pràcticament ha desaparegut. Això vol dir que la transformació logarítmica ha estat efectiva per aconseguir variància aproximadament constant a la sèrie, fet que permet aplicar mètodes d’anàlisi estacionària amb més garanties de validesa estadística.
 
-Per aplicar la transfromació Box-Cox, utilitzem la funció `BoxCox.lambda()` de la llibreria `forecast` per trobar el millor valor de lambda per a la transformació Box-Cox. Primer estima el valor de lambda amb ``BoxCox.lambda()``, que ens retorna `0.9700565` i després aplica la transformació amb la funció ``BoxCox()``, de que obtenim el següent gràfic de boxplots anuals després de la transformació:
+Sabem que hem d'aplicar la transformació de Box-Cox ja que tenim una variància no constant, i com volem arribar a una sèrie estacionària, és necessari mirar si ens cal fer la transformació.  Per aplicar la transfromació Box-Cox, utilitzem la funció `BoxCox.lambda()` de la llibreria `forecast` per trobar el millor valor de lambda per a la transformació Box-Cox. Primer estima el valor de lambda amb ``BoxCox.lambda()``, que ens retorna `0.9700565`, per tant sabem que pràcticament no hi ha una transformació significativa, ja que al ser un valor tant pròxim a 1, sabem que quasi no hi ha transformació (identitat).  Després apliquem la transformació amb la funció ``BoxCox()``, de que obtenim el següent gràfic de boxplots anuals després de la transformació:
 
 <div class="image-row">
     <div class="image-column">
@@ -1288,64 +1303,267 @@ Això fa que la variància sigui encara més estable i la sèrie sigui més fàc
 
 #### 9.3.2 Diferència estacional
 
-Per eliminar l’estacionalitat de la sèrie temporal de vendes mensuals de cotxes, utilitzem la diferenciació estacional. Aquesta tècnica consisteix a restar els valors de la sèrie amb els valors corresponents del mateix període en l’any anterior. Això ajuda a eliminar els patrons estacionals que es repeteixen cada any. Després d'aplicar la diferenciació estacional d’ordre 12, podem analitzar les funcions d’autocorrelació (ACF) i autocorrelació parcial (PACF) per veure si encara hi ha estacionalitat residual. Per fer-ho, utilitzem la funció `diff()` de R amb un lag de 12:
+Per saber primer si hem de fer servir la transformació de la diferència estacional, hem de començar fent els gràfics de ACF i PACF sense cap modificació prèvia, de manera que podem decidir cap a quina transformació fer per millorar el nostre model. El codi de R per fer aquests gràfics és:
 
 ```r
-sales_d12 <- diff(sales_ts, lag = 12)
-acf(sales_d12, ylim = c(-1, 1), lag.max = (40), main = "ACF diferència estacional")
-pacf(sales_d12, ylim = c(-1, 1), lag.max = (40), main = "PACF diferència estacional")
+acf(car_sales_ts, ylim = c(-1, 1))
+pacf(car_sales_ts, ylim = c(-1, 1))
 ```
 
 Els gràfics resultants són els següents:
 
 <div class="image-row">
     <div class="image-column">
-      <img src="./images/ts/10. Diferencia_estacional.png" alt="Funció d'autocorrelació (ACF) després de la diferenciació estacional">
-      <p class="caption">Figura 37: Funció d'autocorrelació (ACF) després de la diferenciació estacional</p>
+      <img src="./images/ts/1.1.ACF.png" alt="Funció d'autocorrelació (ACF)">
+      <p class="caption">Figura 37: Funció d'autocorrelació inicial(ACF) </p>
     </div>
     <div class="image-column">
-      <img src="./images/ts/11.diferencia_regular.png" alt="Funció d'autocorrelació parcial (PACF) després de la diferenciació estacional">
-      <p class="caption">Figura 38: Funció d'autocorrelació parcial (PACF) després de la diferenciació estacional</p>
+      <img src="./images/ts/1.2.PACF.png" alt="Funció d'autocorrelació parcial (PACF)">
+      <p class="caption">Figura 38: Funció d'autocorrelació parcial inicial (PACF)</p>
     </div>
 </div>
 
-Podem veure que gairebé totes les barres es situen dins dels límits de significació. Això indica que el patró estacional anual s’ha eliminat i la sèrie ja no presenta les dependències regulars que tenia inicialment. Aquesta transformació ha convertit la sèrie de vendes mensuals de cotxes en una sèrie molt més homogènia i pròxima a l’estacionarietat, la qual cosa la fa més adequada per a l’anàlisi estadística i la modelització amb models ARIMA i similars.
-
-També podem visualitzar la sèrie temporal després d’aplicar la diferència regular d’ordre 1 per eliminar la tendència. Utilitzem la funció `diff()` de R amb un lag de 1:
+Podem veure que el gràfic de ACF no està dins del límit establert, ni segueix el patró que hauria per poder ser vàlid, per tant, mirant aquest gràfic, podem dir que hem de fer una trasformació logarítmica, d'aquesta manera intentarem trobar una variància constant i intentar millorar el gràfic. Per tant, fem la transformació logarítmica i tornem a fer els gràfics amb el següent codi d'R:
 
 ```r
-diff1 <- diff(sales_ts, lag = 1)
-plot(diff1, main = "Diferència regular (ordre 1)")
+sales_log <- log(car_sales_ts)
+acf(sales_log, ylim = c(-1, 1), main = "ACF de la sèrie log-transformada")
+pacf(sales_log, ylim = c(-1, 1), main = "PACF de la sèrie log-transformada")
 ```
 
-El gràfic resultant és el següent:
+Els gràfics resultants despres de la transformació logarítmica són:
 <div class="image-row">
     <div class="image-column">
-      <img src="./images/ts/11.diferencia_regular.png" alt="Sèrie temporal després de la diferenciació regular d'ordre 1">
-      <p class="caption">Figura 39: Sèrie temporal després de la diferenciació regular d'ordre 1</p>
+      <img src="./images/ts/1.3ACF-log.png" alt="Funció d'autocorrelació (ACF)">
+      <p class="caption">Figura 39: Funció d'autocorrelació transformació log(ACF) </p>
+    </div>
+    <div class="image-column">
+      <img src="./images/ts/1.4PACF-log.png" alt="Funció d'autocorrelació parcial (PACF)">
+      <p class="caption">Figura 40: Funció d'autocorrelació parcial transformació log (PACF)</p>
     </div>
 </div>
 
-Després d’aplicar la diferenciació regular d’ordre 1, s’obté una sèrie que ja no mostra una tendència clara al llarg del temps. Ara, les variacions s’acumulen de forma irregular al voltant del zero i la mitjana de la sèrie es manté estable. Això vol dir que la diferenciació ha eliminat l’efecte de la tendència i la sèrie està més a prop de ser estacionària: és a dir, té una mitjana constant i pot ser utilitzada per a models com ARIMA on aquesta propietat és fonamental.
-
-Analitzem també les funcions d’autocorrelació (ACF) i autocorrelació parcial (PACF) després d’aplicar la diferenciació regular d’ordre 1 per veure si encara hi ha dependències temporals. Utilitzem el següent codi:
+Veient aquests gràfics amb la transformació logarítmica, podem veure que la autocorrelació segueix sent molt elevada i que la tendència no és la correcta. Per tant, podem dir que la sèrie encara no és estacionària, com a mínim en mitjana, ja que és possible que ho sigui per variància. Per tant sabem que la transformació ha ajudat a estabilitzar la variància, però no ens ha ajudat amb la tendència ni la estacionalitat.
+Per tant, la següent transformació que farem serà la diferenciació ordinària, per tal d'eliminar la tendència de la sèrie, i intentar fer la sèrie estacionària en mitjana.
+El codi de R que fem servir és el següent:
 
 ```r
-acf(ser_boxcox, lag.max = 40, ylim = c(-1,1), main = "ACF mostra vendes cotxes")
-pacf(ser_boxcox, lag.max = 40, ylim = c(-1,1), main = "PACF mostra vendes cotxes")
+log_sales_diff1 <- diff(log_sales, lag = 1)       
+acf(log_sales_diff1, ylim = c(-1, 1), main = "ACF diferenciació ordinària")
+pacf(log_sales_diff1, ylim = c(-1, 1), main = "PACF diferenciació ordinària")
 ```
 
-Els gràfics resultants són els següents:
-
+Els gràfics resultants després de la transformació són:
 <div class="image-row">
     <div class="image-column">
-      <img src="./images/ts/12.acf.png" alt="Funció d'autocorrelació (ACF) després de la diferenciació regular">
-      <p class="caption">Figura 40: Funció d'autocorrelació (ACF) després de la diferenciació regular</p>
+      <img src="./images/ts/1.5.ACF-diff_ord.png" alt="Funció d'autocorrelació (ACF)">
+      <p class="caption">Figura 41: Funció d'autocorrelació transformació diferenciació ordinària (ACF) </p>
     </div>
     <div class="image-column">
-      <img src="./images/ts/13.acf2.png" alt="Funció d'autocorrelació parcial (PACF) després de la diferenciació regular">
-      <p class="caption">Figura 41: Funció d'autocorrelació parcial (PACF) després de la diferenciació regular</p>
+      <img src="./images/ts/1.6.PACF-diff_ord.png" alt="Funció d'autocorrelació parcial (PACF)">
+      <p class="caption">Figura 42: Funció d'autocorrelació parcial transformació diferenciació ordinària (PACF)</p>
     </div>
 </div>
 
-Després d’analitzar els gràfics d’ACF i PACF, es pot concloure que la sèrie de vendes mensuals, un cop diferenciada correctament, mostra un comportament pròxim a un AR(1): la PACF té un pic important al primer lag i després decau ràpidament, mentre que la ACF decau suaument i no talla en sec. Això indica que la dependència principal de la sèrie respecte a valors anteriors és autoregressiva d’ordre 1, i no de tipus mitjana mòbil. Aquest resultat serveix de base per escollir l’estructura del model ARIMA més adequat.
+Després d’aplicar la diferenciació ordinària, podem veure un gràfic lleugerament més proper a la estacionarietat en la mitjana. Però, clarament encara podem veure una estacionalitat, tenim un pic molt pronunciat al lag 12, que en el nostre gràfic es representa com a 1. Això ens pot avisar d'una forta estacionalitat anual. Per tant, com a següent transformació, hem d'aplicar la diferenciació estacional. El codi per executar la següent transformació és:
+
+```r
+log_sales_diff1_diff12 <- diff(log_sales_diff1, lag = 12)   
+acf(log_sales_diff1_diff12, ylim = c(-1, 1), main="ACF difernciació estacional")
+pacf(log_sales_diff1_diff12, ylim = c(-1, 1), main="PACF diferenciació estacional")
+```
+
+Els gràfics resultants d'aquesta transformació són:
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/1.7ACF-est.png" alt="Funció d'autocorrelació (ACF) després de la diferenciació estacional">
+      <p class="caption">Figura 43: Funció d'autocorrelació (ACF) després de la diferenciació estacional</p>
+    </div>
+    <div class="image-column">
+      <img src="./images/ts/1.8PACF-est.png" alt="Funció d'autocorrelació parcial (PACF) després de la diferenciació regular">
+      <p class="caption">Figura 44: Funció d'autocorrelació parcial (PACF) després de la diferenciació estacional</p>
+    </div>
+</div>
+
+Aquests gràfics ens mostren una clara diferència de patrons. En el gràfic d'ACF ja no tenim el pic que teniem anteriorment, per tant podem dir que hem eliminat la estacionalitat, i en aquest cas més concret, la anual. Podem veure que cap dels 2 gràfics té cap pic. Les dades estan dins de les barres de confiança. Per tant, ja podem dir que els nostres gràfics són vàlids per poder modelitzar.
+
+### 9.4 Proposta de valors per el model
+
+Primer, hem de comparar si el nostre model i els seus gràfics de ACF i PACF tenen similituds als gràfics de ACF i PACF dels models purs de AR(q) i MA(p).
+Sabem que per tenir un model pur, els nostres gràfics hauríen de seguir els de la taula següent:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/1.9Taula.png" alt="Taula per comparar models purs">
+      <p class="caption">Figura 45: Taula per identificar models purs.</p>
+    </div>
+</div>
+
+Després de comparar podem veure que cap model ens ajuda, ja que no ens surt cap model pur. Tenim una similitud amb el model AR(p), però no la suficient com per considerar-la un model pur. Per tant, ara hem de buscar els components de ARIMA de manera independent.
+Per tant, hem de proposar els ordres dels components del nostre model ARIMA. Primertament començarem amb q. Que sabem que és el nombre de termes amb mitjana mòbil. (MA) Aquesta primera dada la hem de buscar en el nostre gràfic de ACF.
+Podem veure que el nostre gràfic té fins al tercer lag fora de les barres, per tant, una bona proposta és 3. **(MA(3))**
+Ara busquem el segon component, que és p. Sabem que p és el nombre de termes autoregressius. (AR) Aquesta component la hem d'anar a buscar al nostre gràfic de PACF.
+En el gràfic podem veure tres lags sortint de manera clara de les barres de confiança. Per tant, sabem que hi ha una autocorrelació parcial directa entre cada valor i els 3 primers lags. Per això la p = 3. I per tant, ens queda **(AR(3))**
+Per escollir el paràmetre d, hem de contar les vegades que hem fet la diferenciació del nostre model. En el nostre cas, com l'hem fet 1 cop, el nostre paràmetre d serà 1.
+Per escullir els paràmetres Q i P, hem de buscar barres als gràfics ACF/PACF respectivament que destaquin. I els haurem de dividir entre el nostre periode, en aquest cas 12, com que veiem que als 12 lags tenim una barra que destaca, podem dir que Q i P són 1. En el cas de D, com hem aplicat la diferenciació estacional 1 cop, sabem que serà 1.
+Per tant, el nostre model de SARIMA ens queda (3, 1, 3), (1, 1, 1).
+Ara hem de comprovar amb R si el nostre model és vàlid. Per fer-ho posem primer aquest codi:
+
+```r
+car_sales.arima <- arima(sales_log,
+                         order    = c(3,1,3), 
+                         seasonal = list(order = c(1,1,1), 
+                                         period = 12), include.mean = FALSE)
+```
+
+Aquest codi ens farà el model, però per comprovar que són vàlids, hem de mirar si els radis dels coeficients superen tots 2, per tant farem el següent:
+
+```r
+ratios <- round(abs(car_sales.arima$coef/sqrt(diag(car_sales.arima$var.coef))),2)
+ratios
+ratios>2
+```
+
+Al fer el codi els resultats que ens dóna són:
+
+```r
+  ar1   ar2   ar3   ma1   ma2   ma3  sar1  sma1 
+ 0.75 10.84  1.24 10.07  7.06  7.03  3.11  2.52 
+  ar1   ar2   ar3   ma1   ma2   ma3  sar1  sma1 
+FALSE  TRUE FALSE  TRUE  TRUE  TRUE  TRUE  TRUE 
+```
+
+Ara el que hem d'anar fent és treure el coeficient més petit que sigui més pertit de 2. De manera que hem d'acabr amb un model on tots els nostres coeficients siguin positius. Després de fer aquest procés, el resultat final del nostre model és:
+
+```r
+ ma1 sar1 
+8.85 3.81 
+ ma1 sar1 
+TRUE TRUE 
+```
+
+Ara per triar el nostre model, hem de fer el següent codi d'R:
+
+```r
+AIC(car_sales.arima)
+AIC(car_sales.arima2)
+```
+
+Això ens retorna un valor, i el valor que sigui més petit sense contar el valor absolut serà el que farem servir com a model definitiu. El codi ens retorna:
+
+```r
+> AIC(car_sales.arima)
+[1] -125.6338
+> AIC(car_sales.arima2)
+[1] -125.0084
+```
+
+Per tant, ens quedem amb el model següent. SARIMA(3, 1, 3)(1, 1, 1)
+
+### 9.5 Validació del model
+
+Ara per validar el nostre model, el primer que farem serà comprovar la nostra homoscedasticitat. Per fer-ho, farem un gràfic de residus temporals, de manera que veurem si els residues estan centrats en 0. SI veiem un patró, que no és el cas, sabem que el nostre model no capta tot el comportament de la sèrie. També fem un "scatter plot" per veure el valor absolut dels residus. Aquest gràfic tampoc ha de tenir cap tipus de patró. El codi d'R per arribar-hi és:
+
+```r
+resid <- mod_def$residuals
+par(mfrow=c(1,2), mar=c(3,3,3,3))
+plot(resid, main="Residuals")
+abline(h = c(0 , -3*sd(resid), 3*sd(resid)), lty = c(1,3,3), col=c(1,4,4))
+scatter.smooth(sqrt(abs(resid)), 
+               main="Square Root of Absolute residuals",
+               lpars = list(col=2))
+```
+
+Els gràfics resultants del nostre codi són:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/1.10Residu.png" alt="Residus temporals">
+      <p class="caption">Figura 46: Residus temporals</p>
+    </div>
+    <div class="image-column">
+      <img src="./images/ts/1.11Scatter.png" alt="Scatter plot residus">
+      <p class="caption">Figura 47: Scatter plot suavitzat de la arrel quadrada del valor absolut dels residus</p>
+    </div>
+</div>
+
+A continuació, hem de mirar si els residus tenen una distribució normal, de manera que fem els següents gràfics en R per poder saber-ho:
+
+```r
+par(mfrow=c(1,2), mar=c(3,3,3,3))
+qqnorm(resid)
+qqline(resid,col=2,lwd=2)
+hist(resid, breaks = 10, freq=F)
+curve(dnorm(x, mean = mean(resid), sd = sd(resid)), col=2, add=T)
+```
+
+Els gràfics que ens surten són:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/1.12QQnorm.png" alt="QQ norm, dels residus">
+      <p class="caption">Figura 48: Q-Q plot dels residus en distribució normal</p>
+    </div>
+    <div class="image-column">
+      <img src="./images/ts/1.13Histo_res.png" alt="Histograma dels residus">
+      <p class="caption">Figura 49: Histograma dels residus</p>
+    </div>
+</div>
+
+Aquests gràfics, ens mostren que els residus, segueixen de manera general una distribució normal. Sense tenir en compte alguns outliers que hi poden haver, la resta segueixen la distribució desitjada.
+
+EL següent que hem de fer és mirar si els nostres residus són independents. El codi per fer aquest gràfic en R és:
+
+```r
+tsdiag(mod_def, gof.lag = 15)
+```
+
+El gràfic resultant és:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/1.14Inde.png" alt="Gràfic per l'independència de residus">
+      <p class="caption">Figura 50: Validació de la independència dels residus</p>
+    </div>
+</div>
+
+Per mirar-ho, ens hem de fixar amb lúltim gràfic. Podem veure que cap punt està per sota de la línia, per tant, cap punt té un valor inferior a 0,05. De manera que no podem rebutjar la nostra hipòtesi nula de: els residus són independents. Per tant, els nostres residus són independents.
+
+Per tant, ja hem validat el nostre model.
+
+### 9.6 Predicció
+
+Ara que ja hem validat el nostre model, ens toca fer-lo servir per fer la predicció. Per poder fer un gràfic a on la veiem, farem servir el següent codi d'R:
+
+```r
+pred   <- predict(mod_def, n.ahead=24)
+pr_log <- pred$pred
+se_log <- pred$se
+
+li_log <- pr_log - 1.96 * se_log # limit inferior log
+ls_log <- pr_log + 1.96 * se_log # limit superior log
+
+li <- ts(exp(li_log), start = 1969, freq=12)
+pr <- ts(exp(pr_log), start = 1969, freq=12)
+ls <- ts(exp(ls_log), start = 1969, freq=12)
+
+# Grafic
+par(mfrow=c(1,1))
+ts.plot(car_sales_ts,
+        li, ls, pr,
+        lty  = c(1,2,2,1), 
+        col  = c("black","blue","blue","red"),
+        xlim = c(1960,1971))
+```
+
+El primer que fem en aquest codi és calcular les prediccions i l'error estàndar, i escollim una predicció de 2 anys/ 24 mesos. A continuació fem la sèrie logarítmica per els seus límits superiors i inferiors. Finalment, el que necessitem és la sèrie temporal inicial, no la que té una transformació logarítmica, per tant, desfem les transformacions en les 3 prediccions.
+El nostre gràfic final és:
+
+<div class="image-row">
+    <div class="image-column">
+      <img src="./images/ts/1.15Pred.png" alt="Gràfic predicció durant 2 anys ">
+      <p class="caption">Figura 51: Predicció de la venda de cotxes durant 2 anys</p>
+    </div>
+</div>
+
+Com podem veure, el nostre model ens fa una predicció, amb límits inferiors i superiors de les vendes de cotxes mensuals dels pròxims 2 anys.
